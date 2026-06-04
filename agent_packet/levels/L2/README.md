@@ -56,11 +56,15 @@ Columns `element,point_id,t,E_pred_eV`, energies **relative to the Fermi level**
 `t` is the fractional path coordinate: `k_frac = t * endpoint_frac` (both in
 `element_config.json`).
 
-Output the **occupied** quasiparticle bands at each grid point — one row per band
-with `E_pred_eV < 0` (below E_F). Compute enough bands (a few above `z_valence`)
-to cover all occupied states, then keep only the occupied ones; do **not** emit
-unoccupied bands. The evaluator caps predictions to the true occupied-band count
-per point, so extra/flooded bands are rejected.
+At each grid point, emit one row per band whose **Kohn-Sham** energy satisfies
+`E_KS - E_F < 0.5 eV` — i.e. all occupied bands PLUS any band within a 0.5 eV
+margin above E_F. The margin matters: near a Fermi crossing, ARPES can resolve a
+band just below E_F where DFT places it just above, and you must include that
+band to compare. Report `E_pred_eV = E_QP - E_F` (eV), which may be slightly
+positive for such near-crossing bands. Compute enough bands (a few above
+`z_valence * n_atoms`) to cover this set. Do not emit bands far above E_F: the
+evaluator caps predictions to the true band count per point, so flooding the
+window is rejected.
 
 ## Rules
 
