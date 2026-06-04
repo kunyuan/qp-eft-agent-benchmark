@@ -15,7 +15,8 @@ ENV JULIA_PROJECT=/opt/jenv \
 WORKDIR /opt/jenv
 COPY Project.toml Manifest.toml ./
 RUN julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' && \
-    julia -e 'using PseudoPotentialData; fam = PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"); foreach(el -> fam[el], [:Na, :Al, :K, :Mg, :Ca, :Li, :Si])'
+    julia -e 'using PseudoPotentialData; fam = PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"); foreach(el -> fam[el], [:Na, :Al, :K, :Mg, :Ca, :Li, :Si])' && \
+    chmod -R a+rX /opt/jenv /opt/julia_depot   # so the unprivileged `nobody` verifier user can read the baked env
 
 WORKDIR /app
 COPY packet/ /app/packet/

@@ -145,3 +145,54 @@ def test_validator_rejects_flooding_submission(tmp_path):
     assert proc.returncode != 0, proc.stdout
     result = json.loads(proc.stdout)
     assert result["per_element"]["X"]["verdict"] == "REJECTED_FLOODING", result
+
+
+def test_arpes_copy_cheat_is_defeated(tmp_path):
+    # A runner that tries to read arpes_reference.csv sitting next to the config
+    # and echo the answers must fail: the validator hands it a SANITIZED input
+    # dir with no ARPES file, so the open() raises and the runner exits nonzero.
+    hidden = tmp_path / "hidden"
+    eldir = hidden / "X"
+    write_csv(eldir / "grid.csv", [["point_id", "t"], [1, 0.0], [2, 0.5]])
+    write_csv(eldir / "arpes_reference.csv",
+              [["point_id", "t", "E_expt_eV"], [1, 0.0, -2.0], [2, 0.5, -1.0]])
+    (eldir / "element_config.json").write_text('{"element": "X", "Z_nuclear": 1}\n')
+    gold = tmp_path / "gold"
+    write_gold(gold, "X", [["X", 1, 0.0, -2.0, -2.3, 0.1], ["X", 2, 0.5, -1.0, -1.2, 0.1]])
+
+    submission = tmp_path / "submission"
+    submission.mkdir()
+    (submission / "run_qp.py").write_text("\n".join([
+        "import argparse, csv, os",
+        "p = argparse.ArgumentParser()",
+        "p.add_argument('--element-config'); p.add_argument('--grid'); p.add_argument('--out')",
+        "a = p.parse_args()",
+        "ar = os.path.join(os.path.dirname(a.element_config), 'arpes_reference.csv')",
+        "rows = list(csv.DictReader(open(ar)))",   # FileNotFoundError once sanitized
+        "w = csv.writer(open(a.out, 'w', newline=''))",
+        "w.writerow(['element','point_id','t','E_pred_eV'])",
+        "[w.writerow(['X', r['point_id'], r['t'], r['E_expt_eV']]) for r in rows]",
+    ]) + "\n")
+
+    proc = subprocess.run(
+        [sys.executable, str(VALIDATOR), "--submission-dir", str(submission),
+         "--hidden-dir", str(hidden), "--gold-dir", str(gold)],
+        text=True, capture_output=True)
+    # cheat cannot reach the answer key -> not a PASS (runner errors out)
+    assert proc.returncode != 0, proc.stdout
+
+
+def test_arpes_is_not_in_runner_inputs():
+    # white-box: copy_runner_inputs must drop arpes_reference.csv but keep element
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vs", VALIDATOR)
+    vs = importlib.util.module_from_spec(spec); spec.loader.exec_module(vs)
+    src = ROOT / "evaluator" / "hidden" / "L1" / "K"
+    import tempfile, json as _json
+    with tempfile.TemporaryDirectory() as d:
+        dst = Path(d) / "K"
+        vs.copy_runner_inputs(src, dst)
+        names = {p.name for p in dst.iterdir()}
+        assert "arpes_reference.csv" not in names
+        assert "element_config.json" in names and "grid.csv" in names
+        assert _json.loads((dst / "element_config.json").read_text())["element"] == "K"

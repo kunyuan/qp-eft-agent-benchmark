@@ -53,6 +53,25 @@ def test_flooding_would_have_cheated_without_guard():
     assert naive < 0.05, naive  # exploit is real -> guard is necessary
 
 
+def test_sparse_predictions_rejected():
+    # dropping reference points (predict only the easy/deep ones) -> INVALID_SHAPE
+    el = "K"
+    ref, gold_qp, gold_ks = _load(el)
+    keep = sorted(gold_qp)[:3]
+    sparse = {pid: gold_qp[pid] for pid in keep}
+    r = V.score_element(ref, sparse, gold_qp, gold_ks)
+    assert r["verdict"] == "INVALID_SHAPE" and r["n_missing"] > 0, r
+
+
+def test_wrong_band_count_rejected():
+    # emitting fewer bands than the gold (drop the first-unoccupied) -> INVALID_SHAPE
+    el = "Mg"  # multi-band: gold has 2-4 bands per point
+    ref, gold_qp, gold_ks = _load(el)
+    under = {pid: bands[:1] for pid, bands in gold_qp.items()}  # one band per point
+    r = V.score_element(ref, under, gold_qp, gold_ks)
+    assert r["verdict"] == "INVALID_SHAPE" and r["n_band_count_mismatches"] > 0, r
+
+
 if __name__ == "__main__":
     test_gold_qp_passes_for_each_hidden_element()
     test_bare_ks_fails()

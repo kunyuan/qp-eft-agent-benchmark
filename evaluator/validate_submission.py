@@ -22,6 +22,7 @@ import argparse
 import csv
 import json
 import math
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -38,6 +39,21 @@ FLOOD_TOTAL_RATIO = 1.5
 def read_reference(path: Path) -> dict[int, float]:
     with path.open(newline="") as f:
         return {int(r["point_id"]): float(r["E_expt_eV"]) for r in csv.DictReader(f)}
+
+
+def copy_runner_inputs(element_dir: Path, dst: Path) -> None:
+    """Copy the hidden runner inputs EXCEPT the held-out ARPES (the answer key),
+    so a malicious run_qp.py cannot read the reference energies sitting next to
+    the config it is handed. Keeps `element` and everything else the runner needs."""
+    dst.mkdir(parents=True, exist_ok=True)
+    for src in sorted(element_dir.iterdir()):
+        if src.name == "arpes_reference.csv":
+            continue
+        target = dst / src.name
+        if src.is_dir():
+            shutil.copytree(src, target)
+        else:
+            shutil.copy2(src, target)
 
 
 def read_predictions(path: Path) -> dict[int, list[float]]:
@@ -118,6 +134,23 @@ def score_element(
             "total_gold_bands": total_gold,
             "note": "predictions exceed gold occupied-band count; cannot pass",
         }
+    # shape guard: every reference point must be predicted with exactly the gold
+    # band count (occupied + first unoccupied). Closes "sparse" (drop hard points)
+    # and "under-band" cheats; honest agents on the pinned setup match exactly.
+    band_count_mismatches = {
+        pid: {"expected": n_occ.get(pid, 0), "got": len(predictions.get(pid, []))}
+        for pid in reference
+        if pid in predictions and len(predictions[pid]) != n_occ.get(pid, 0)
+    }
+    if missing or band_count_mismatches:
+        return {
+            "verdict": "INVALID_SHAPE",
+            "rmse_eV": None,
+            "n_scored": len(scored),
+            "n_missing": len(missing),
+            "n_band_count_mismatches": len(band_count_mismatches),
+            "note": "every reference point must be predicted with exactly the gold band count",
+        }
     if not scored:
         return {"verdict": "NO_PREDICTION", "rmse_eV": None,
                 "n_scored": 0, "n_missing": len(missing)}
@@ -149,10 +182,13 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
         out_dir = Path(tmp)
         for element_dir in sorted(p for p in hidden_dir.iterdir() if p.is_dir()):
             el = element_dir.name
+            # hand the runner a sanitized input dir with NO arpes_reference.csv
+            runner_input = out_dir / "inputs" / el
+            copy_runner_inputs(element_dir, runner_input)
             out_csv = out_dir / f"{el}_qp_bands.csv"
             cmd = [sys.executable, str(runner),
-                   "--element-config", str(element_dir / "element_config.json"),
-                   "--grid", str(element_dir / "grid.csv"),
+                   "--element-config", str(runner_input / "element_config.json"),
+                   "--grid", str(runner_input / "grid.csv"),
                    "--out", str(out_csv)]
             proc = subprocess.run(cmd, cwd=submission_dir, text=True, capture_output=True)
             if proc.returncode != 0:
@@ -167,9 +203,18 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
     rmses = [r["rmse_eV"] for r in per_element.values()
              if isinstance(r, dict) and r.get("rmse_eV") is not None]
     mean_rmse = sum(rmses) / len(rmses) if rmses else None
-    any_rejected = any(isinstance(r, dict) and r.get("verdict") == "REJECTED_FLOODING"
-                       for r in per_element.values())
-    overall = "REJECTED_FLOODING" if any_rejected else verdict(mean_rmse)
+
+    def _has(v):
+        return any(isinstance(r, dict) and r.get("verdict") == v for r in per_element.values())
+    # any per-element disqualifier sinks the whole submission
+    if _has("REJECTED_FLOODING"):
+        overall = "REJECTED_FLOODING"
+    elif _has("INVALID_SHAPE"):
+        overall = "INVALID_SHAPE"
+    elif _has("NO_PREDICTION"):
+        overall = "NO_PREDICTION"
+    else:
+        overall = verdict(mean_rmse)
     return {
         "per_element": per_element,
         "overall": {
