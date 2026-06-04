@@ -1,0 +1,15 @@
+{
+  "element": "Na",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 39.911869469712286,
+      "fc_table_file": "fc_table_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 2.700554987712735,
+      "fc_table_file": "fc_table_2s.csv"
+    }
+  ]
+}

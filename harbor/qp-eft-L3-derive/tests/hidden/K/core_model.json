@@ -1,0 +1,28 @@
+{
+  "element": "K",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 132.10525019874223,
+      "atomic_core_file": "atomic_core_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 13.654292950320041,
+      "atomic_core_file": "atomic_core_2s.csv"
+    },
+    {
+      "channel": "3s",
+      "DeltaE_c_Ha": 1.7183798467370934,
+      "atomic_core_file": "atomic_core_3s.csv"
+    }
+  ],
+  "atomic_data_columns": {
+    "atomic_core_*.csv": [
+      "r_bohr",
+      "u_c",
+      "V_H_c"
+    ]
+  },
+  "atomic_data_note": "u_c(r)=r*R_c(r) normalized so integral u_c^2 dr = 1; V_H_c is the single-core-orbital Hartree potential."
+}

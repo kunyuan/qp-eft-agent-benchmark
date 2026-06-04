@@ -17,9 +17,9 @@ should read the rest relative to the config.
 
 ---
 
-# Level 2 — compute the form factor
+# Level 1 — apply the given correction
 
-The formula is given, but you must compute the core form factor `f_c(K)` yourself from the atomic core data. Read `THEORY.md`.
+The full formula and the core form factors are given. Wire up DFTK with the pinned settings, extract the Bloch coefficients, assemble `z_core`, and predict. Read `THEORY.md`.
 
 Public development elements: `Na/`, `Al/` (each with `element_config.json`, `grid.csv`, `arpes_reference.csv`, and the level's data files).
 
@@ -93,9 +93,11 @@ submission scores ~0.4-0.6 eV and FAILs by construction.
 
 ---
 
-# Theory (Level 2)
+# Theory (Level 1)
 
-Same correction as Level 1:
+The leading frozen-core quasiparticle correction is post-SCF: compute the KS
+band, then compress occupied energies toward the Fermi level by a state-
+dependent factor.
 
 ```
 E_QP(n,k) - E_F = z_core(n,k) * (E_KS(n,k) - E_F)
@@ -103,14 +105,12 @@ z_core(n,k)     = 1 / (1 + sum_c |F_c(n,k)|^2 / DeltaE_c^2)
 F_c(n,k)        = sum_G c_nk(G) * f_c(|k+G|)
 ```
 
-but the core form factor `f_c(K)` is **not** given. Compute it from the atomic
-core data (`atomic_core_<c>.csv`: `r_bohr,u_c,V_H_c`):
+- `c_nk(G)` are the plane-wave coefficients of the KS Bloch state |n,k>
+  (read them from your DFTK calculation).
+- `f_c(K)` is the core form factor for channel c — **given** in
+  `fc_table_<c>.csv` (columns `K_bohr_inv,f_c`); interpolate.
+- `DeltaE_c` (Ha) is in `core_model.json`.
+- `|k+G|` is the Cartesian length in Bohr^-1 (use the reciprocal lattice).
 
-```
-J_c     = integral u_c(r)^2 V_H_c(r) dr
-f_c(K)  = sqrt(4*pi)/K * integral u_c(r) [V_H_c(r) - J_c] sin(K r) dr     (K>0)
-f_c(0)  = sqrt(4*pi)   * integral u_c(r) [V_H_c(r) - J_c] r dr
-```
-
-`DeltaE_c` (Ha) is in `core_model.json`. `c_nk(G)` come from your DFTK run;
-`|k+G|` is the Cartesian length in Bohr^-1.
+Do not add the static core self-energy again — it is already in the
+pseudopotential. Only the frequency-dependent piece (the z_core factor) is new.

@@ -1,0 +1,15 @@
+{
+  "element": "Mg",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 48.89664486518885,
+      "fc_table_file": "fc_table_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 4.066239665443732,
+      "fc_table_file": "fc_table_2s.csv"
+    }
+  ]
+}

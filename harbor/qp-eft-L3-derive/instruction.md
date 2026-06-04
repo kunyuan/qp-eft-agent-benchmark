@@ -17,9 +17,9 @@ should read the rest relative to the config.
 
 ---
 
-# Level 2 — compute the form factor
+# Level 3 — derive the correction
 
-The formula is given, but you must compute the core form factor `f_c(K)` yourself from the atomic core data. Read `THEORY.md`.
+No formula is given. From the physical setup and the atomic core data, derive the leading frozen-core quasiparticle correction and implement it. Read `SETUP.md`. This is the frontier rung: it amounts to reconstructing the paper's derivation from the stated mechanism and the provided ingredients — expect it to be hard, and document your reasoning in `method.md`.
 
 Public development elements: `Na/`, `Al/` (each with `element_config.json`, `grid.csv`, `arpes_reference.csv`, and the level's data files).
 
@@ -93,24 +93,30 @@ submission scores ~0.4-0.6 eV and FAILs by construction.
 
 ---
 
-# Theory (Level 2)
+# Physical setup (Level 3)
 
-Same correction as Level 1:
+For these simple metals the Kohn-Sham occupied bandwidth overestimates ARPES by
+20-35% (alkali) down to a few % (Al). DFT gives no reason KS eigenvalues should
+be quasiparticle energies — yet they nearly are. Your task is to find, derive,
+and implement the leading parameter-free correction, then predict band energies.
 
-```
-E_QP(n,k) - E_F = z_core(n,k) * (E_KS(n,k) - E_F)
-z_core(n,k)     = 1 / (1 + sum_c |F_c(n,k)|^2 / DeltaE_c^2)
-F_c(n,k)        = sum_G c_nk(G) * f_c(|k+G|)
-```
+What is missing is dynamical. A frozen-core (large-core) pseudopotential removes
+the core electrons; its STATIC core-valence physics is already included. The
+omitted piece is the dynamical response of virtual core excitations. Two facts
+make the leading correction controlled:
 
-but the core form factor `f_c(K)` is **not** given. Compute it from the atomic
-core data (`atomic_core_<c>.csv`: `r_bohr,u_c,V_H_c`):
+1. Scale separation: core excitation energies `DeltaE_c` (provided per core
+   s-channel in `core_model.json`) are several Hartree, far above the valence
+   Fermi energy — they can be integrated out as high-energy modes.
+2. The interacting uniform electron gas at metallic density is approximately
+   Galilean invariant over the occupied Fermi ball, so the static tree-level
+   Hamiltonian coincides with the Kohn-Sham Hamiltonian; only the quasiparticle
+   pole is rescaled by the frozen-core dynamics.
 
-```
-J_c     = integral u_c(r)^2 V_H_c(r) dr
-f_c(K)  = sqrt(4*pi)/K * integral u_c(r) [V_H_c(r) - J_c] sin(K r) dr     (K>0)
-f_c(0)  = sqrt(4*pi)   * integral u_c(r) [V_H_c(r) - J_c] r dr
-```
-
-`DeltaE_c` (Ha) is in `core_model.json`. `c_nk(G)` come from your DFTK run;
-`|k+G|` is the Cartesian length in Bohr^-1.
+You are given, per core s-channel c: the all-electron radial core orbital
+`u_c(r)` and its single-orbital Hartree potential `V_H_c(r)`
+(`atomic_core_<c>.csv`), and the core excitation energy `DeltaE_c`. From your
+DFTK calculation you have the KS eigenvalues and the plane-wave coefficients of
+each Bloch state. Derive the leading post-SCF quasiparticle correction and
+implement it. It must be parameter-free and use the same code path for every
+element.

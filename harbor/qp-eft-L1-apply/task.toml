@@ -3,9 +3,9 @@ version = "1.0"
 [metadata]
 author_name = "QP-EFT Benchmark"
 author_email = "noreply@example.com"
-difficulty_explanation = "Reconstruct and implement the frozen-core quasiparticle correction. The closed-form correction is given but the core form factor is NOT; compute it from the provided atomic core data, assemble the renormalization on DFTK Kohn-Sham bands, and beat bare KS against held-out ARPES on concealed metals."
+difficulty_explanation = "Apply the given frozen-core quasiparticle correction. The formula AND the core form factors are provided; wire up DFTK with the pinned setup, extract the Bloch coefficients, assemble the state-dependent renormalization, and beat bare KS against held-out ARPES on concealed metals. Tests correct DFT plumbing and generalization."
 category = "scientific-computing"
-tags = ["physics", "dft", "dftk", "quasiparticle", "frozen-core", "julia", "level-2"]
+tags = ["physics", "dft", "dftk", "quasiparticle", "frozen-core", "julia", "level-1"]
 
 # DFTK SCF + bands on the two hidden metals (K, Mg) take a few minutes each.
 [verifier]
