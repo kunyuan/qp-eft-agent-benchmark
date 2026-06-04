@@ -45,10 +45,34 @@ python run_qp.py --element-config element_config.json --grid grid.csv --out qp_b
 python evaluator/validate_submission.py --submission-dir <dir> --level 2 --json result.json
 ```
 
-Scoring is nearest-band RMSE vs ARPES, with predictions **capped to the gold
-occupied-band count** per k-point (flooding is rejected). **PASS < 0.30 eV**,
-PARTIAL 0.30–0.40, FAIL otherwise. Bare KS scores ~0.4–0.6 eV → FAIL, so the
-correction is necessary to pass (the report states the KS baseline for audit).
+Scoring is nearest-band RMSE vs ARPES. **PASS < 0.30 eV**, PARTIAL 0.30–0.40,
+FAIL otherwise. Bare KS scores ~0.4–0.6 eV → FAIL, so the correction is necessary
+to pass (the report states the KS baseline for audit).
+
+Anti-cheat guards (so a low RMSE means "did the physics"):
+- The runner is handed a **sanitized input directory with no `arpes_reference.csv`**
+  — it cannot read the answers sitting next to the config. In the Harbor tasks it
+  also runs as an unprivileged user with the hidden/gold data root-only.
+- Predictions must cover **every** reference point with **exactly** the gold band
+  count (occupied bands + the first unoccupied band) per k-point — flooding,
+  sparse, and under-band submissions are rejected.
+- Develops against Na/Al only; the held-out metals are concealed, so memorized
+  per-element answers can't be hardcoded into generic code.
+
+## Run as a Harbor task (containerized agent harness)
+
+Each level is also packaged as a [Harbor](https://github.com/harbor-framework/harbor)
+task under `harbor/qp-eft-L{1,2,3}-*/` — a pinned container (Julia + DFTK), the
+oracle, and the verifier (see `harbor/README.md`):
+
+```bash
+harbor run --agent oracle --path harbor/qp-eft-L1-apply          # check the task is solvable
+harbor run --agent claude-code --path harbor/qp-eft-L2-formfactor # run a real agent
+```
+
+Fresh solver agents (given only one level's packet) reproduce the gold and pass
+the concealed K/Mg: L1 (verified across 3 independent agents) and L2 (which must
+implement the form-factor quadrature itself) both reach overall PASS ≈ 0.163 eV.
 
 ## Validation (gold reference vs real ARPES)
 
@@ -71,9 +95,10 @@ provenance.
 agent_packet/levels/L{1,2,3}/{Na,Al}/   agent-facing packets (one level per run)
 evaluator/
   hidden/L{1,2,3}/{K,Mg}/               held-out metals (config+grid+data+ARPES)
-  gold/                                 gold occupied-band references
+  gold/                                 gold band references (occupied + first unoccupied)
   source_data/                          raw grids+ARPES (maintainer source)
-  validate_submission.py                scorer (--level)
+  validate_submission.py                scorer (--level; sanitizes inputs, anti-cheat guards)
+harbor/qp-eft-L{1,2,3}-*/               the three levels as Harbor tasks (env/oracle/verifier)
 reference/                              gold solution, atomic solver, generators
 environment/                            pinned Julia project (DFTK 0.7.25)
 ```
@@ -82,5 +107,6 @@ environment/                            pinned Julia project (DFTK 0.7.25)
 
 ```bash
 julia --project=environment reference/gen_packet_data.jl   # atomic data + f_c tables
-python3 reference/build_packet.py                          # assemble levels + hidden
+python3 reference/build_packet.py                          # assemble agent_packet + hidden
+python3 reference/build_harbor.py                          # assemble the three Harbor tasks
 ```
