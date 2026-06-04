@@ -36,7 +36,8 @@ element, then scores.
 
 - `run_qp.py` must not read any `arpes_reference.csv`.
 - Same code path for public and hidden elements; no per-element branches/hardcodes.
-- `method.md` (if provided) describes a parameter-free correction, not a fit.
+- `method.md` (required by the submission spec) describes a parameter-free
+  correction, not a fit; for Level 3 it should show the derivation.
 - Low RMSE + a hidden-element hardcode = invalid.
 
 ## Tests
