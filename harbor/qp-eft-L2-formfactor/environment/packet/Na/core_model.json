@@ -1,0 +1,23 @@
+{
+  "element": "Na",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 39.911869469712286,
+      "atomic_core_file": "atomic_core_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 2.700554987712735,
+      "atomic_core_file": "atomic_core_2s.csv"
+    }
+  ],
+  "atomic_data_columns": {
+    "atomic_core_*.csv": [
+      "r_bohr",
+      "u_c",
+      "V_H_c"
+    ]
+  },
+  "atomic_data_note": "u_c(r)=r*R_c(r) normalized so integral u_c^2 dr = 1; V_H_c is the single-core-orbital Hartree potential."
+}

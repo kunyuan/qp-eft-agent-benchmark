@@ -1,0 +1,70 @@
+# Harbor packaging
+
+The benchmark wrapped as [Harbor](https://github.com/harbor-framework/harbor)
+tasks — a containerized harness an agent can explore in, and a verifier that
+scores its `run_qp.py` against held-out ARPES.
+
+## Tasks
+
+- `qp-eft-L2-formfactor/` — Level 2 (formula given, compute the form factor from
+  atomic data). Prototype; L1/L3 follow the same shape (swap the
+  `instruction.md` / packet data; the environment, oracle, and verifier are
+  identical).
+
+## Task layout (standard Harbor)
+
+```
+qp-eft-L2-formfactor/
+├── task.toml            # metadata + verifier/agent/build timeouts
+├── instruction.md       # the L2 task (container working-dir note + README + THEORY)
+├── environment/
+│   ├── Dockerfile       # Julia 1.12.1 + DFTK 0.7.25 (pinned via Manifest) + Python
+│   ├── Project.toml, Manifest.toml
+│   └── packet/{Na,Al}/  # public development data (agent-facing)
+├── solution/            # oracle (NOT shown to the agent)
+│   ├── solve.sh         # installs the reference run_qp.py at /app/run_qp.py
+│   ├── run_qp.py, gold_runner.jl, atomic_hf.jl
+└── tests/               # verifier (NOT shown to the agent)
+    ├── test.sh          # runs /app/run_qp.py on hidden K,Mg; writes /logs/verifier/reward.txt
+    ├── score.py         # flooding guard + KS-baseline gate + thresholds
+    ├── hidden/{K,Mg}/   # concealed metals (config+grid+ARPES+atomic data)
+    └── gold/            # gold occupied-band references
+```
+
+The agent only sees `instruction.md` + the container (`environment/`, incl.
+`/app/packet/`). `solution/` and `tests/` are applied by Harbor and are not
+visible to the agent — so the hidden ARPES and gold never leak.
+
+## Environment notes
+
+- DFTK is **version-pinned** via `Manifest.toml` (the gold/thresholds are
+  calibrated to DFTK 0.7.25). The Dockerfile `instantiate`s it and pre-fetches
+  the GTH pseudo artifact so the runtime needs no network.
+- No PackageCompiler sysimage: for a single-agent exploration harness the
+  one-time precompile + per-process JIT (~tens of seconds on Julia 1.12) is
+  acceptable. If iteration latency becomes annoying, keep a persistent Julia
+  process (juliacall) rather than building a sysimage.
+
+## Reward
+
+`tests/test.sh` writes `1` to `/logs/verifier/reward.txt` iff the overall
+verdict is PASS (mean held-out RMSE < 0.30 eV), else `0`. (For RL-style
+continuous reward, map `score.py`'s RMSE instead of thresholding.)
+
+## What is validated
+
+- **Verifier scoring** (`score.py` + `test.sh` logic) is checked locally: the
+  oracle's QP output scores PASS (reward 1, mean 0.163 eV); bare KS scores FAIL
+  (reward 0, 0.524 eV).
+- The full `run_qp.py → DFTK → predictions` pipeline is validated outside the
+  container (see `../reference/`, `../DESIGN.md`).
+- Building/running the container itself requires Docker (provided by Harbor);
+  it was not built here.
+
+## Run (with Docker + Harbor)
+
+```bash
+harbor run --task harbor/qp-eft-L2-formfactor --agent <your-agent>
+# oracle sanity check (task is solvable):
+harbor run --task harbor/qp-eft-L2-formfactor --solution
+```
