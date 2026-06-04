@@ -97,3 +97,50 @@ def test_validator_rejects_missing_runner(tmp_path):
 
     assert proc.returncode != 0
     assert "run_qp.py" in proc.stderr
+
+
+def test_validator_rejects_too_many_bands_per_point(tmp_path):
+    hidden = tmp_path / "hidden"
+    element_dir = hidden / "K"
+    write_csv(element_dir / "grid.csv", [["point_id", "t"], [1, 0.0]])
+    write_csv(element_dir / "arpes_reference.csv", [["point_id", "t", "E_expt_eV"], [1, 0.0, -1.0]])
+    (element_dir / "element_config.json").write_text('{"element": "K"}\n')
+
+    submission = tmp_path / "submission"
+    submission.mkdir()
+    runner = submission / "run_qp.py"
+    runner.write_text(
+        "\n".join(
+            [
+                "import argparse, csv",
+                "p = argparse.ArgumentParser()",
+                "p.add_argument('--element-config')",
+                "p.add_argument('--grid')",
+                "p.add_argument('--out')",
+                "args = p.parse_args()",
+                "with open(args.out, 'w', newline='') as f:",
+                "    w = csv.writer(f)",
+                "    w.writerow(['element', 'point_id', 't', 'E_pred_eV'])",
+                "    w.writerow(['K', 1, 0.0, -2.5])",
+                "    w.writerow(['K', 1, 0.0, -1.0])",
+            ]
+        )
+        + "\n"
+    )
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(VALIDATOR),
+            "--submission-dir",
+            str(submission),
+            "--hidden-dir",
+            str(hidden),
+        ],
+        text=True,
+        capture_output=True,
+    )
+
+    assert proc.returncode == 2
+    assert "too many bands" in proc.stderr
+    assert "K point_id=1" in proc.stderr

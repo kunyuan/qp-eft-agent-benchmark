@@ -15,12 +15,29 @@ from pathlib import Path
 
 PASS_RMSE_EV = 0.20
 PARTIAL_RMSE_EV = 0.40
+DEFAULT_MAX_BANDS_PER_POINT = {
+    "Na": 1,
+    "K": 1,
+    "Mg": 2,
+    "Al": 3,
+}
 
 
 def read_reference(path: Path) -> dict[int, float]:
     with path.open(newline="") as f:
         rows = csv.DictReader(f)
         return {int(row["point_id"]): float(row["E_expt_eV"]) for row in rows}
+
+
+def read_element_config(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text())
+
+
+def max_bands_per_point(config: dict[str, object], element: str) -> int | None:
+    validation = config.get("validation")
+    if isinstance(validation, dict) and "max_bands_per_point" in validation:
+        return int(validation["max_bands_per_point"])
+    return DEFAULT_MAX_BANDS_PER_POINT.get(element)
 
 
 def read_predictions(path: Path) -> dict[int, list[float]]:
@@ -36,6 +53,21 @@ def read_predictions(path: Path) -> dict[int, list[float]]:
                 continue
             predictions.setdefault(int(row["point_id"]), []).append(float(value))
     return predictions
+
+
+def validate_prediction_shape(
+    element: str,
+    predictions: dict[int, list[float]],
+    max_bands: int | None,
+) -> None:
+    if max_bands is None:
+        return
+    for point_id, values in sorted(predictions.items()):
+        if len(values) > max_bands:
+            raise ValueError(
+                f"too many bands for {element} point_id={point_id}: "
+                f"got {len(values)}, allowed at most {max_bands}"
+            )
 
 
 def verdict(rmse: float | None) -> str:
@@ -93,6 +125,7 @@ def run_submission(submission_dir: Path, hidden_dir: Path) -> dict[str, object]:
         out_dir = Path(tmp)
         for element_dir in sorted(path for path in hidden_dir.iterdir() if path.is_dir()):
             element = element_dir.name
+            config = read_element_config(element_dir / "element_config.json")
             out_csv = out_dir / f"{element}_qp_bands.csv"
             cmd = [
                 sys.executable,
@@ -112,6 +145,7 @@ def run_submission(submission_dir: Path, hidden_dir: Path) -> dict[str, object]:
                 )
             reference = read_reference(element_dir / "arpes_reference.csv")
             predictions = read_predictions(out_csv)
+            validate_prediction_shape(element, predictions, max_bands_per_point(config, element))
             per_element[element] = score_element(reference, predictions)
 
     rmses = [

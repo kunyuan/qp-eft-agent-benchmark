@@ -25,6 +25,12 @@ python /path/to/submission/run_qp.py \
 
 Then it scores nearest-band RMSE against `arpes_reference.csv`.
 
+The validator rejects submissions that over-report bands at a k-point before
+scoring, which prevents dense-energy-grid submissions from gaming nearest-band
+matching. Defaults are Na/K <= 1 band, Mg <= 2 bands, and Al <= 3 bands per
+point; a hidden element config may override this with
+`validation.max_bands_per_point`.
+
 ## Maintainer Audit Checklist
 
 - Confirm the submitted `run_qp.py` does not read files from this repository's
@@ -33,4 +39,3 @@ Then it scores nearest-band RMSE against `arpes_reference.csv`.
 - Confirm `method.md` describes a parameter-free correction, not a fitted
   bandwidth scaling.
 - Treat a low hidden RMSE plus a hardcoded hidden-element branch as invalid.
-

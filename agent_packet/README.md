@@ -44,6 +44,9 @@ element,point_id,t,E_pred_eV
 
 Use one row per occupied band at each k-point. Repeat `point_id` when multiple
 occupied bands are present.
+Do not emit dense candidate-energy grids or other extra bands: the evaluator
+checks that the number of rows per k-point is physically consistent with the
+element.
 
 ## Suggested Workflow
 
@@ -64,4 +67,3 @@ occupied bands are present.
 - No hidden-data assumptions.
 - A converged LDA/PBE Kohn-Sham band alone is not a quasiparticle prediction
   for this benchmark.
-
