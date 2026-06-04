@@ -183,10 +183,16 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--submission-dir", required=True, type=Path)
-    p.add_argument("--hidden-dir", type=Path, default=Path(__file__).resolve().parent / "hidden")
+    p.add_argument("--level", type=int, choices=(1, 2, 3), default=2,
+                   help="difficulty level; selects hidden/L<level> (default 2)")
+    p.add_argument("--hidden-dir", type=Path, default=None,
+                   help="override; defaults to evaluator/hidden/L<level>")
     p.add_argument("--gold-dir", type=Path, default=Path(__file__).resolve().parent / "gold")
     p.add_argument("--json", type=Path)
-    return p.parse_args()
+    args = p.parse_args()
+    if args.hidden_dir is None:
+        args.hidden_dir = Path(__file__).resolve().parent / "hidden" / f"L{args.level}"
+    return args
 
 
 def main() -> int:

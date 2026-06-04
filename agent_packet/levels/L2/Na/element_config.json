@@ -1,0 +1,38 @@
+{
+  "element": "Na",
+  "Z_nuclear": 11,
+  "structure": {
+    "bravais": "bcc",
+    "a_bohr": 8.107,
+    "path": {
+      "from": "Gamma",
+      "to": "N",
+      "endpoint_frac": [
+        0,
+        0,
+        0.5
+      ]
+    }
+  },
+  "dft": {
+    "xc": "LDA",
+    "pseudopotential_family": "cp2k.nc.sr.lda.v0_1.largecore.gth",
+    "z_valence": 1,
+    "ecut_Ha": 15.0,
+    "kgrid": [
+      8,
+      8,
+      8
+    ],
+    "smearing_Ha": 0.001
+  },
+  "frozen_core": {
+    "core_s_channels": [
+      "1s",
+      "2s"
+    ],
+    "valence": "3s1",
+    "core_model_file": "core_model.json"
+  },
+  "note": "t in grid.csv is fractional along Gamma->endpoint: k_frac = t * endpoint_frac."
+}

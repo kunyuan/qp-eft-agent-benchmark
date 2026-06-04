@@ -11,3 +11,6 @@ submission/
 *.jls
 reference/gold/**/na_summary.txt
 reference/gold/**/*_summary.txt
+# staging data for the packet (regenerate: reference/gen_packet_data.jl);
+# canonical copies live in agent_packet/levels and evaluator/hidden
+reference/packet_data/

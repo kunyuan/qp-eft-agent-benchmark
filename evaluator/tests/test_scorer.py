@@ -8,7 +8,7 @@ sys.path.insert(0, str(ROOT / "evaluator"))
 import validate_submission as V  # noqa: E402
 
 GOLD = ROOT / "evaluator" / "gold"
-HIDDEN = ROOT / "evaluator" / "hidden"
+HIDDEN = ROOT / "evaluator" / "hidden" / "L2"  # ARPES is level-independent
 
 
 def _load(el):

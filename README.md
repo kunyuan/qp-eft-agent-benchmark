@@ -1,77 +1,86 @@
-# EFT-QP Agent Benchmark Harness
+# QP-EFT Agent Benchmark
 
-This repository is an evaluator harness for testing whether a problem-solving
-agent can reconstruct and implement the frozen-core quasiparticle correction
-for simple-metal band narrowing.
+A benchmark for **agentic theoretical-physics reasoning + scientific coding**,
+built on *Kohn–Sham Hamiltonian from Effective Field Theory: Quasiparticle Band
+Narrowing from Frozen Core Dynamics* (arXiv:2604.25199).
 
-Do not give this full repository to a problem-solving agent. Give only
-`agent_packet/`. The `evaluator/` directory contains hidden validation data.
+The task: predict the **occupied quasiparticle band energies** of simple metals.
+A bare Kohn–Sham band (from DFTK) overestimates the ARPES bandwidth by 20–35%
+for alkali metals; the agent must reconstruct and implement the parameter-free
+frozen-core correction `E_QP - E_F = z_core(n,k) (E_KS - E_F)` and beat bare KS
+against held-out ARPES.
 
-## Benchmark Idea
+Theory is **not** graded directly. It is tested *implicitly*: only code that
+encodes the correct physics produces correct numbers — so we withhold the
+formula (at the harder levels) and grade the predictions.
 
-The public development set is Na and Al. The agent sees their grids,
-experimental ARPES references, and material configs. It must use these to:
+## Difficulty ladder (same physics, withhold more)
 
-1. reproduce the Kohn-Sham baseline with DFTK/LDA/GTH;
-2. diagnose why the Na Kohn-Sham bandwidth is too large while Al is nearly OK;
-3. derive a parameter-free frozen-core quasiparticle correction;
-4. implement a generic runner:
+| Level | Given | Withheld | Tests |
+|-------|-------|----------|-------|
+| **L1** | full `z_core` formula + precomputed `f_c(K)` tables | — | DFTK wiring, applying the correction, generalization |
+| **L2** | the formula; atomic core data (`u_c`, `V_H_c`) | the form factors | implementing the form-factor quadrature |
+| **L3** | only the physical setup + atomic core data | the formula | deriving `z_core` from the EFT |
+
+All levels are scored identically against held-out ARPES.
+
+## What the agent gets vs what is hidden
+
+- **Agent-facing:** `agent_packet/` — README + `levels/L{1,2,3}/` with the public
+  development elements **Na, Al** (config, grid, ARPES, level data) and the task
+  + theory/setup docs. Hand the agent ONE level's directory.
+- **Hidden (maintainer-only):** `evaluator/` — held-out metals **K, Mg** per
+  level, the gold band references, and the scorer. The agent develops against
+  Na/Al only; its generic `run_qp.py` is run on the concealed metals.
+
+## Submission & scoring
+
+The agent submits `run_qp.py`:
 
 ```bash
 python run_qp.py --element-config element_config.json --grid grid.csv --out qp_bands.csv
 ```
 
-The hidden validation set is K and Mg. The evaluator calls the same runner on
-hidden configs and grids, then compares the output to held-out ARPES data.
-
-## Directory Layout
-
-```text
-agent_packet/          agent-facing task packet; safe to hand to solvers
-evaluator/             hidden validation data and scorer
-environment/           Julia environment declaration for DFTK work
-maintainer_sources/    optional paper/source materials for benchmark maintainers
+```bash
+python evaluator/validate_submission.py --submission-dir <dir> --level 2 --json result.json
 ```
 
-## Running The Hidden Validator
+Scoring is nearest-band RMSE vs ARPES, with predictions **capped to the gold
+occupied-band count** per k-point (flooding is rejected). **PASS < 0.30 eV**,
+PARTIAL 0.30–0.40, FAIL otherwise. Bare KS scores ~0.4–0.6 eV → FAIL, so the
+correction is necessary to pass (the report states the KS baseline for audit).
 
-After an agent submits a directory containing `run_qp.py`, run:
+## Validation (gold reference vs real ARPES)
+
+| El | bare KS RMSE | QP RMSE | verdict |
+|----|--------------|---------|---------|
+| Na | 0.413 | 0.078 | PASS |
+| K  | 0.614 | 0.139 | PASS |
+| Mg | 0.434 | 0.187 | PASS |
+| Al | 0.414 | 0.248 | PASS |
+
+End-to-end (reference submission → evaluator, hidden K+Mg, level 2): overall
+PASS, mean RMSE 0.163 eV. The reference solution (`reference/`) reproduces the
+paper's Table I exactly and is the gold used to calibrate thresholds and band
+counts. See `DESIGN.md` for the full design and `reference/README.md` for
+provenance.
+
+## Layout
+
+```text
+agent_packet/levels/L{1,2,3}/{Na,Al}/   agent-facing packets (one level per run)
+evaluator/
+  hidden/L{1,2,3}/{K,Mg}/               held-out metals (config+grid+data+ARPES)
+  gold/                                 gold occupied-band references
+  source_data/                          raw grids+ARPES (maintainer source)
+  validate_submission.py                scorer (--level)
+reference/                              gold solution, atomic solver, generators
+environment/                            pinned Julia project (DFTK 0.7.25)
+```
+
+## Reproducing the benchmark data
 
 ```bash
-python evaluator/validate_submission.py \
-  --submission-dir /path/to/submission \
-  --json result.json
+julia --project=environment reference/gen_packet_data.jl   # atomic data + f_c tables
+python3 reference/build_packet.py                          # assemble levels + hidden
 ```
-
-The validator passes hidden `element_config.json` and `grid.csv` files to the
-runner. The runner must write a CSV with columns:
-
-```text
-element,point_id,t,E_pred_eV
-```
-
-The scorer matches each held-out ARPES point to the nearest submitted occupied
-band at the same `point_id`.
-
-## Scoring
-
-Per hidden element:
-
-| RMSE (eV) | Verdict |
-| --- | --- |
-| `< 0.20` | PASS |
-| `0.20 - 0.40` | PARTIAL |
-| `>= 0.40` | FAIL |
-
-The overall verdict uses the mean hidden-set RMSE.
-
-## Leakage Rules
-
-- Agent-facing solvers must receive only `agent_packet/`.
-- Hidden `K/` and `Mg/` folders must not be included in prompts, context, or
-  mounted workspaces for the problem-solving agent.
-- The full paper and old benchmark README should not be shown to solvers,
-  because they reveal validation trends and intended-method diagnostics.
-- During validation, the agent code may receive hidden element configs and
-  grids as ordinary runtime inputs. It must not receive hidden ARPES references.
-

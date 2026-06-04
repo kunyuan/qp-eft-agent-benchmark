@@ -154,4 +154,6 @@ function run(element, gridfile, outfile)
     @printf("[%s] εF=%.4f eV, wrote %d rows → %s\n", element, εF*Ha2eV, length(rows), outfile)
 end
 
-run(ARGS[1], ARGS[2], ARGS[3])
+if abspath(PROGRAM_FILE) == @__FILE__
+    run(ARGS[1], ARGS[2], ARGS[3])
+end

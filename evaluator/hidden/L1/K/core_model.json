@@ -1,0 +1,20 @@
+{
+  "element": "K",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 132.10525019874223,
+      "fc_table_file": "fc_table_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 13.654292950320041,
+      "fc_table_file": "fc_table_2s.csv"
+    },
+    {
+      "channel": "3s",
+      "DeltaE_c_Ha": 1.7183798467370934,
+      "fc_table_file": "fc_table_3s.csv"
+    }
+  ]
+}

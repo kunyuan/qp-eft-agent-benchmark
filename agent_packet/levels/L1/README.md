@@ -1,15 +1,8 @@
-# Frozen-Core Quasiparticle Band Benchmark — agent packet
+# Level 1 — apply the given correction
 
-Predict occupied quasiparticle band energies for simple metals. The same
-physics problem is offered at three difficulty levels (pick one); all are
-scored identically against held-out ARPES.
+The full formula and the core form factors are given. Wire up DFTK with the pinned settings, extract the Bloch coefficients, assemble `z_core`, and predict. Read `THEORY.md`.
 
-- `levels/L1/` — apply the given `z_core` formula + given form factors.
-- `levels/L2/` — formula given; compute the form factor from atomic data.
-- `levels/L3/` — derive the correction from the physical setup.
-
-Develop against the public elements (Na, Al). The evaluator runs your
-`run_qp.py` on concealed held-out metals via the same interface.
+Public development elements: `Na/`, `Al/` (each with `element_config.json`, `grid.csv`, `arpes_reference.csv`, and the level's data files).
 
 ## Submission
 
