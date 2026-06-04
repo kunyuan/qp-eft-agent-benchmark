@@ -1,0 +1,62 @@
+{
+  "element": "Al",
+  "Z_nuclear": 13,
+  "structure": {
+    "bravais": "fcc",
+    "a_bohr": 7.653,
+    "lattice_vectors_bohr": [
+      [
+        0.0,
+        3.8265,
+        3.8265
+      ],
+      [
+        3.8265,
+        0.0,
+        3.8265
+      ],
+      [
+        3.8265,
+        3.8265,
+        0.0
+      ]
+    ],
+    "atom_positions_frac": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "path": {
+      "from": "Gamma",
+      "to": "X",
+      "endpoint_frac": [
+        0.5,
+        0,
+        0.5
+      ]
+    }
+  },
+  "dft": {
+    "xc": "LDA",
+    "pseudopotential_family": "cp2k.nc.sr.lda.v0_1.largecore.gth",
+    "z_valence": 3,
+    "ecut_Ha": 20.0,
+    "kgrid": [
+      8,
+      8,
+      8
+    ],
+    "smearing_Ha": 0.001
+  },
+  "frozen_core": {
+    "core_s_channels": [
+      "1s",
+      "2s"
+    ],
+    "valence": "3s2 3p1",
+    "core_model_file": "core_model.json"
+  },
+  "note": "Build the cell from structure.lattice_vectors_bohr (the three primitive lattice vectors a1,a2,a3 in Bohr; in DFTK use them as the COLUMNS of the `lattice` matrix) and structure.atom_positions_frac (fractional coordinates, one per atom -- NOT necessarily a single atom). t in grid.csv is fractional along Gamma->endpoint: k_frac = t * endpoint_frac."
+}
