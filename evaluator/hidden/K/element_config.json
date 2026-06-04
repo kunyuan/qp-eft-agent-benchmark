@@ -1,0 +1,23 @@
+{
+  "element": "K",
+  "role": "hidden_validation",
+  "structure": {
+    "bravais": "bcc",
+    "a_bohr": 9.87,
+    "path": "Gamma-N"
+  },
+  "dftk": {
+    "exchange_correlation": "LDA",
+    "pseudopotential_family": "GTH",
+    "z_valence": 1,
+    "ecut_Ha": 30,
+    "smearing_Ha": 0.001
+  },
+  "core_model": {
+    "model": "frozen_core_scalar_warmup",
+    "dominant_channel": "3s",
+    "delta_E_Ha": 1.72,
+    "z_core_gamma": 0.66,
+    "source": "hidden validation input, not agent-facing training data"
+  }
+}

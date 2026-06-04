@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+result.json
+validation_outputs/
+submission/
+*.egg-info/

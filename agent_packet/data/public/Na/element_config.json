@@ -1,0 +1,28 @@
+{
+  "element": "Na",
+  "role": "public_development",
+  "structure": {
+    "bravais": "bcc",
+    "a_bohr": 8.11,
+    "path": "Gamma-N"
+  },
+  "dftk": {
+    "exchange_correlation": "LDA",
+    "pseudopotential_family": "GTH",
+    "z_valence": 1,
+    "ecut_Ha": 30,
+    "smearing_Ha": 0.001
+  },
+  "core_model": {
+    "model": "frozen_core_scalar_warmup",
+    "dominant_channel": "2s",
+    "delta_E_Ha": 2.70,
+    "z_core_gamma": 0.80,
+    "source": "agent-facing theory packet, public development element"
+  },
+  "public_diagnostics": {
+    "ks_gamma_depth_eV": 3.27,
+    "qp_gamma_depth_eV": 2.62,
+    "arpes_gamma_depth_eV_range": [2.65, 2.78]
+  }
+}
