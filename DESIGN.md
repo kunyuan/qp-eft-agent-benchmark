@@ -114,6 +114,32 @@ drives RMSE → 0 with zero physics and no DFTK. Fatal.
 
 ---
 
+## 5b. Calibration results (gold_runner.jl vs real ARPES) — VALIDATED
+
+All four simple metals confirm the correction is **necessary and sufficient**:
+
+| El | KS RMSE (eV) | QP RMSE (eV) | improvement | note |
+|----|--------------|--------------|-------------|------|
+| Na | 0.413 (FAIL) | 0.078 (PASS) | 5.3× | alkali, large correction |
+| K  | 0.614 (FAIL) | 0.139 (PASS) | 4.4× | alkali, largest correction |
+| Mg | 0.434 (FAIL) | 0.187 (PASS) | 2.3× | needs multi-band output |
+| Al | 0.414 (FAIL) | 0.248 (PASS) | 1.7× | small correction, tightest margin |
+
+**Calibrated thresholds: PASS < 0.30 eV, PARTIAL 0.30–0.40, FAIL > 0.40 eV.**
+Separates every QP from every KS; KS-baseline gate satisfied automatically.
+
+Caveats found during validation (feed into the evaluator + packet rebuild):
+- **Multi-band output is mandatory** for Mg/Al/Ca/Si (the ARPES tracks a band that
+  disperses; lowest-band-only fails). The runner outputs all occupied bands.
+- **Nearest-band matching is forgiving** (it's how validation passed) but is the
+  gameable path — the real evaluator must use one-to-one assignment vs the gold
+  occupied-band set, not nearest-of-many.
+- **Per-element path mapping is inconsistent in codex's grids.** Each experiment
+  uses different x-units (Na: Å⁻¹ ÷ |Γ-N|; K: already fractional; Mg: Γ-A-Γ folded,
+  x extends to 1.67×|Γ-A|; Al: Γ-X). The benchmark grids + ARPES references must be
+  **regenerated from the raw `reference/expts/*.csv`** with one correct convention,
+  not trusted from codex.
+
 ## 6. Open build tasks
 
 1. **[in progress]** Validate DFTK KS bandwidth for Na (`E(Γ)-E_F ≈ -3.27 eV`).

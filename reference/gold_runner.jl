@@ -10,18 +10,53 @@ using Printf, LinearAlgebra, DFTK, PseudoPotentialData, DelimitedFiles
 include(joinpath(@__DIR__, "gold", "sodium", "atomic_hf.jl"))
 const Ha2eV = 27.211386245988
 
-# Per-element pinned setup (from authors' eft-psp run_ks.jl + freq_correction.jl)
+# Per-element pinned setup (from authors' eft-psp run_ks.jl + freq_correction.jl).
+# core/full/holes are atomic electron configs (n,l,occ); endpoint is the Γ→X/N/A
+# fractional path end; nat>1 elements give explicit positions.
 const ELEMENTS = Dict(
-  "Na" => (Z=11, Zval=1, bravais=:bcc, a=8.107, Ecut=15.0, kgrid=[8,8,8],
+  "Na" => (Z=11, sym=:Na, bravais=:bcc, a=8.107, Ecut=15.0, kgrid=[8,8,8],
            endpoint=[0.0,0.0,0.5], # Γ→N
            core=[(1,0,2),(2,0,2),(2,1,6)], full=[(1,0,2),(2,0,2),(2,1,6),(3,0,1)],
            holes=Dict(1=>[(1,0,1),(2,0,2),(2,1,6)], 2=>[(1,0,2),(2,0,1),(2,1,6)])),
+  "Al" => (Z=13, sym=:Al, bravais=:fcc, a=7.653, Ecut=20.0, kgrid=[8,8,8],
+           endpoint=[0.5,0.0,0.5], # Γ→X
+           core=[(1,0,2),(2,0,2),(2,1,6)], full=[(1,0,2),(2,0,2),(2,1,6),(3,0,2),(3,1,1)],
+           holes=Dict(1=>[(1,0,1),(2,0,2),(2,1,6)], 2=>[(1,0,2),(2,0,1),(2,1,6)])),
+  "K"  => (Z=19, sym=:K, bravais=:bcc, a=9.874, Ecut=15.0, kgrid=[8,8,8],
+           endpoint=[0.0,0.0,0.5], # Γ→N
+           core=[(1,0,2),(2,0,2),(2,1,6),(3,0,2),(3,1,6)],
+           full=[(1,0,2),(2,0,2),(2,1,6),(3,0,2),(3,1,6),(4,0,1)],
+           holes=Dict(1=>[(1,0,1),(2,0,2),(2,1,6),(3,0,2),(3,1,6)],
+                      2=>[(1,0,2),(2,0,1),(2,1,6),(3,0,2),(3,1,6)],
+                      3=>[(1,0,2),(2,0,2),(2,1,6),(3,0,1),(3,1,6)])),
+  "Ca" => (Z=20, sym=:Ca, bravais=:fcc, a=10.545, Ecut=20.0, kgrid=[8,8,8],
+           endpoint=[0.5,0.0,0.5], # Γ→X
+           core=[(1,0,2),(2,0,2),(2,1,6),(3,0,2),(3,1,6)],
+           full=[(1,0,2),(2,0,2),(2,1,6),(3,0,2),(3,1,6),(4,0,2)],
+           holes=Dict(1=>[(1,0,1),(2,0,2),(2,1,6),(3,0,2),(3,1,6)],
+                      2=>[(1,0,2),(2,0,1),(2,1,6),(3,0,2),(3,1,6)],
+                      3=>[(1,0,2),(2,0,2),(2,1,6),(3,0,1),(3,1,6)])),
+  "Mg" => (Z=12, sym=:Mg, bravais=:hcp, a=6.066, ca=1.624, Ecut=20.0, kgrid=[8,8,6],
+           endpoint=[0.0,0.0,0.5], # Γ→A
+           core=[(1,0,2),(2,0,2),(2,1,6)], full=[(1,0,2),(2,0,2),(2,1,6),(3,0,2)],
+           holes=Dict(1=>[(1,0,1),(2,0,2),(2,1,6)], 2=>[(1,0,2),(2,0,1),(2,1,6)])),
 )
 
-function prim_lattice(bravais, a)
-    bravais == :bcc && return (a/2)*[-1.0 1 1; 1 -1 1; 1 1 -1]
-    bravais == :fcc && return (a/2)*[0.0 1 1; 1 0 1; 1 1 0]
-    error("unsupported bravais $bravais")
+# returns (lattice, atom_syms, positions)
+function build_structure(el)
+    a = el.a
+    if el.bravais == :bcc
+        return (a/2)*[-1.0 1 1; 1 -1 1; 1 1 -1], [el.sym], [zeros(3)]
+    elseif el.bravais == :fcc
+        return (a/2)*[0.0 1 1; 1 0 1; 1 1 0], [el.sym], [zeros(3)]
+    elseif el.bravais == :hcp
+        c = a*el.ca
+        lat = [a  a/2          0.0;
+               0  a*sqrt(3)/2  0.0;
+               0  0            c]
+        return lat, [el.sym, el.sym], [[0.0,0.0,0.0],[1/3,2/3,1/2]]
+    end
+    error("unsupported bravais $(el.bravais)")
 end
 
 # ---- atomic form factors + ΔSCF core excitation energies ----
@@ -36,9 +71,10 @@ function build_form_factors(el)
     end
     atom = solve_atom(el.Z, Vector{Tuple{Int,Int,Int}}(el.full); dr=dr, r_max=rmax)
     r=atom.rgrid; N=length(r)
+    core_s = Set((n,l) for (n,l,_) in el.core if l == 0)   # core s-channels only
     ffs = FormFactor[]
-    for orb in atom.orbitals[1:end-1]   # skip valence
-        orb.l != 0 && continue
+    for orb in atom.orbitals
+        (orb.n, orb.l) in core_s || continue
         VHc = orbital_coulomb_potential(orb.u, 1.0, r, dr)
         Jc  = dr*sum(orb.u[i]^2*VHc[i] for i in 1:N)
         Sc  = dr*sum(r[i]*orb.u[i] for i in 1:N)
@@ -68,9 +104,10 @@ function run(element, gridfile, outfile)
             join(["$(ff.name) f0=$(round(ff.f0,digits=4)) ΔE=$(round(ff.ΔE,digits=4)) Δc0=$(round(ff.f0^2/ff.ΔE^2,digits=4))" for ff in ffs], " | "))
 
     # 2) KS side
-    lattice = prim_lattice(el.bravais, el.a)
-    psp = load_psp(PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"), Symbol(element))
-    model = model_LDA(lattice, [ElementPsp(Symbol(element), psp)], [zeros(3)];
+    lattice, syms, positions = build_structure(el)
+    psp = load_psp(PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"), el.sym)
+    atoms = [ElementPsp(s, psp) for s in syms]
+    model = model_LDA(lattice, atoms, positions;
                       temperature=0.001, smearing=DFTK.Smearing.FermiDirac())
     basis = PlaneWaveBasis(model; Ecut=el.Ecut, kgrid=el.kgrid)
     scfres = self_consistent_field(basis; tol=1e-8, mixing=KerkerMixing(),
@@ -89,7 +126,10 @@ function run(element, gridfile, outfile)
     for (i,t) in enumerate(ts)
         kfrac = kpts[i]
         Gs = collect(DFTK.G_vectors(bands.basis, bands.basis.kpoints[i]))
-        for n in 1:1   # lowest band (occupied for these simple metals along the path)
+        nb = length(bands.eigenvalues[i])
+        for n in 1:nb
+            eks = (bands.eigenvalues[i][n]-εF)*Ha2eV
+            eks > 0.5 && continue   # occupied bands only (KS below εF + small margin)
             ψ = bands.ψ[i][:,n]
             Δ = 0.0
             for ff in ffs
@@ -100,7 +140,6 @@ function run(element, gridfile, outfile)
                 end
                 Δ += abs2(Fc)
             end
-            eks = (bands.eigenvalues[i][n]-εF)*Ha2eV
             eqp = eks/(1+Δ)   # (E-εF) scaled by z_core=1/(1+Δ)
             push!(rows, (element, pids[i], t, eqp, eks, Δ))
         end
