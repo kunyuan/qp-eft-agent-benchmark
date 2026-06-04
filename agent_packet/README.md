@@ -83,7 +83,9 @@ band count per point, so do not emit extra bands.
 
 ## Scoring
 
-Predictions are compared to held-out ARPES by nearest-band RMSE, with the
-number of bands per point capped to the true occupied count (flooding is
-rejected). PASS < 0.30 eV, PARTIAL 0.30-0.40, FAIL otherwise. A bare KS
-submission scores ~0.4-0.6 eV and FAILs by construction.
+Predictions are compared to held-out ARPES by nearest-band RMSE. You must cover
+**every** grid point with **exactly** the bands specified above (occupied + first
+unoccupied) — flooded, sparse, or wrong-count submissions are rejected. PASS <
+0.30 eV, PARTIAL 0.30-0.40, FAIL otherwise. A bare KS submission scores ~0.4-0.6
+eV and FAILs by construction. (At evaluation your runner is given inputs WITHOUT
+the held-out ARPES, so the prediction must come from the physics.)

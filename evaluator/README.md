@@ -5,8 +5,9 @@ Scores a submitted `run_qp.py` against held-out ARPES.
 ```
 hidden/L{1,2,3}/{K,Mg}/   held-out metals per level: element_config.json, grid.csv,
                           arpes_reference.csv (scoring target), + level data files
-gold/<El>_gold.csv        gold occupied bands (QP + KS) from reference/gold_runner.jl;
-                          used for band-count cap and the KS-baseline audit
+gold/<El>_gold.csv        gold bands (QP + KS, occupied + first unoccupied) from
+                          reference/gold_runner.jl; used for the band-count check
+                          and the KS-baseline audit
 source_data/<El>/         raw grids + ARPES (the build source for hidden/ and packet)
 validate_submission.py    the scorer
 ```
@@ -17,25 +18,32 @@ validate_submission.py    the scorer
 python validate_submission.py --submission-dir <dir> --level 2 --json result.json
 ```
 
-`--level {1,2,3}` selects `hidden/L<level>`. The validator runs
-`python <dir>/run_qp.py --element-config ... --grid ... --out ...` per hidden
-element, then scores.
+`--level {1,2,3}` selects `hidden/L<level>`. For each hidden element the validator
+copies the inputs to a **sanitized temp dir with no `arpes_reference.csv`**
+(`copy_runner_inputs`), runs `python <dir>/run_qp.py --element-config ... --grid
+... --out ...` against it, then scores.
 
 ## Scoring guards (why low RMSE means "did the physics")
 
-1. **Flooding guard** — predictions are capped to the gold occupied-band count
-   per k-point. A submission that floods the energy window (to make nearest-band
-   matching trivial) is `REJECTED_FLOODING`. This was the fatal exploit in the
-   original scorer.
-2. **Nearest-band matching** is then safe (n_pred ≈ n_occ = 1–3 bands).
-3. **KS-baseline gate** — thresholds (PASS < 0.30 eV) sit below what bare KS
-   scores (~0.41–0.61 eV), so a no-physics submission FAILs. `ks_baseline_rmse_eV`
-   is reported for audit.
+1. **No answer key in the inputs** — the runner gets a sanitized input dir without
+   `arpes_reference.csv`, so it cannot read the held-out energies sitting next to the
+   config and echo them. (A real exploit: the agent could discover this on Na/Al.)
+2. **Shape guard** — every reference point must be predicted with **exactly** the
+   gold band count per k-point (occupied + first unoccupied). Flooding →
+   `REJECTED_FLOODING`; missing points / wrong count → `INVALID_SHAPE`. Closes the
+   flooding, sparse, and under-band cheats.
+3. **Nearest-band RMSE** is then safe (n_pred = 1–4 well-separated bands).
+4. **KS-baseline gate** — thresholds (PASS < 0.30 eV) sit below what bare KS scores
+   (~0.41–0.61 eV), so a no-physics submission FAILs. `ks_baseline_rmse_eV` reported.
+
+(The Harbor tasks add container isolation: agent code runs as `nobody` with
+`/tests/{hidden,gold}` root-only — see `harbor/`.)
 
 ## Maintainer audit checklist
 
-- `run_qp.py` must not read any `arpes_reference.csv`.
-- Same code path for public and hidden elements; no per-element branches/hardcodes.
+- Same code path for public and hidden elements; no per-element branches/hardcodes
+  (reading `arpes_reference.csv` is now structurally impossible — it's not in the
+  runner's inputs — but still confirm no per-element answer tables).
 - `method.md` (required by the submission spec) describes a parameter-free
   correction, not a fit; for Level 3 it should show the derivation.
 - Low RMSE + a hidden-element hardcode = invalid.
