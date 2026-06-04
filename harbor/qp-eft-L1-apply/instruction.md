@@ -97,10 +97,13 @@ band count per point, so do not emit extra bands.
   GTH pseudopotentials are already installed locally). Do not download data, clone
   repositories, query web services, or otherwise reach the network at run time — a
   submission whose prediction depends on a network call is invalid.
-- **Solve from this packet only — no external lookup.** Do not search the web for
-  or otherwise consult the underlying research paper, its derivation, the answers,
-  or any external code/data for this problem. The task is to reconstruct the
-  physics from what is provided here, not to retrieve it from an outside source.
+- **No external lookup at all — solve from this packet only.** Treat yourself as
+  having no internet: do **not** use web search for anything — not the underlying
+  research paper / its derivation / the answers, and not library or API
+  documentation. Everything you need is here plus the tools installed locally.
+  DFTK is installed in the pinned project; discover its exact API by introspecting
+  the package in Julia (`names(DFTK; all=true)`, `?<name>`, `methods(<fn>)`, or
+  reading the installed source under the depot) — not from the web.
 
 ## Scoring
 

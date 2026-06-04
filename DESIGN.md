@@ -85,11 +85,14 @@ concealment is the test *set*, not the runtime name:
    on unknown metals without a forbidden per-element branch.
 3. **No network / no external lookup** — two instruction rules: (a) `run_qp.py`
    must not reach the network at run time (compute from local inputs + DFTK,
-   offline); (b) the agent must not consult external sources while solving — no web
-   search, no looking up the underlying paper / its derivation / the answers / the
-   `eft-psp` repo (which has the K/Mg band data). (b) matters most for **L3**: the
-   paper is public, so live lookup would let the agent *read* the derivation
-   instead of producing it.
+   offline); (b) the agent must not consult **any** external source while solving —
+   no web search of any kind: not the underlying paper / derivation / answers / the
+   `eft-psp` repo, and **not even library/API documentation**. (b) matters most for
+   **L3** (the public paper would hand over the derivation), but applies throughout.
+   This is solvable without web because DFTK is installed locally — the intended way
+   to learn its API (e.g. `ExplicitKpoints`, `Gplusk_vectors_cart`) is Julia
+   introspection of the installed package (`names`, `?`, `methods`, source), not the
+   web. (Reflects how the reference solution was found.)
    - **Enforcement (rule → control):** these are rules by default. To enforce:
      run the verifier offline (Harbor `[verifier] network_mode = "no-network"`, or
      a `--network none` sandbox), and restrict the *agent* phase to an allowlist of
