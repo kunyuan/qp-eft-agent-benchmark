@@ -46,7 +46,7 @@ The levels differ only in **how much the `agent_packet/` withholds**.
 | Level | Packet gives | Packet withholds | Primarily tests |
 |-------|--------------|------------------|-----------------|
 | **L1** | `z_core` closed form **and** precomputed `f_c(K)` tables + `DeltaE_c` | numerical answer (`z_core_gamma`), per-element values | DFTK wiring, correct application, generalization (floor) |
-| **L2** | `z_core` closed form; atomic core radial data `u_c(r)`, `V_{H,c}(r)`, `J_c`, `DeltaE_c` | `f_c(K)` tables, `z_core_gamma` | implementing the form-factor quadrature (Eq. 7), extracting `c_nk(G)` from DFTK, assembling `z_core(n,k)` |
+| **L2** | `z_core` closed form; atomic core radial data `u_c(r)`, `V_{H,c}(r)`, `DeltaE_c`; `J_c` computed from radial data | `f_c(K)` tables, `z_core_gamma` | implementing the form-factor quadrature (Eq. 7), extracting `c_nk(G)` from DFTK, assembling `z_core(n,k)` |
 | **L3** | physical setup only (the two conditions, dual-fermion mechanism narrative, "missing physics is dynamical frozen-core"); atomic core radial data | the entire `z_core` / `F_c` formula | deriving `z_core` from the EFT and implementing it |
 
 All three are scored identically on held-out elements; "generalization" is inherent
