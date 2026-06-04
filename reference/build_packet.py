@@ -182,6 +182,11 @@ band count per point, so do not emit extra bands.
   public elements and on concealed held-out metals.
 - Develop only against the public elements here (Na, Al). Hidden metals are
   scored by the evaluator and are not revealed.
+- **No network access in `run_qp.py`.** Compute everything from the provided
+  inputs + DFTK, which runs fully offline (the pinned Julia environment and the
+  GTH pseudopotentials are already installed locally). Do not download data, clone
+  repositories, query web services, or otherwise reach the network at run time — a
+  submission whose prediction depends on a network call is invalid.
 
 ## Scoring
 

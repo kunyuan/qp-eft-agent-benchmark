@@ -83,7 +83,15 @@ concealment is the test *set*, not the runtime name:
 2. **Concealed test set + no-hardcode audit** — the solver writes generic code
    against Na/Al only; memorized per-element numbers can't enter code that must run
    on unknown metals without a forbidden per-element branch.
-3. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
+3. **No-network rule** — `run_qp.py` is forbidden from network access (stated in
+   the instruction); everything is computed from the local inputs + DFTK, which
+   runs offline. This blocks fetching the answers online (e.g. cloning the authors'
+   `eft-psp` repo, which has the K/Mg band data). NB: this is a *rule*, not yet a
+   container-enforced control — Harbor can enforce it via a verifier network policy
+   (`[verifier] network_mode = "no-network"`), but that needs a provider with
+   dynamic network policy (E2B) or a separate verifier env, and is **not** set by
+   default. To hard-enforce, run the verifier in a no-network sandbox.
+4. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
    memorized/plumbing-only submission fails.
 
 ---
