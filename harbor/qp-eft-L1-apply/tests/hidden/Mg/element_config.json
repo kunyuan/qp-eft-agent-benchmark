@@ -4,6 +4,35 @@
   "structure": {
     "bravais": "hcp",
     "a_bohr": 6.066,
+    "lattice_vectors_bohr": [
+      [
+        6.066,
+        0.0,
+        0.0
+      ],
+      [
+        3.033,
+        5.253310099356405,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        9.851184
+      ]
+    ],
+    "atom_positions_frac": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.3333333333333333,
+        0.6666666666666666,
+        0.5
+      ]
+    ],
     "path": {
       "from": "Gamma",
       "to": "A",
@@ -35,5 +64,5 @@
     "valence": "3s2",
     "core_model_file": "core_model.json"
   },
-  "note": "t in grid.csv is fractional along Gamma->endpoint: k_frac = t * endpoint_frac."
+  "note": "Build the cell from structure.lattice_vectors_bohr (the three primitive lattice vectors a1,a2,a3 in Bohr; in DFTK use them as the COLUMNS of the `lattice` matrix) and structure.atom_positions_frac (fractional coordinates, one per atom -- NOT necessarily a single atom). t in grid.csv is fractional along Gamma->endpoint: k_frac = t * endpoint_frac."
 }

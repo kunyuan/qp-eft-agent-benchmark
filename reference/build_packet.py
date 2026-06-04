@@ -12,7 +12,7 @@ Layout produced:
   evaluator/hidden/L{1,2,3}/{K,Mg}/        (hidden: config, grid, arpes[scoring], data)
 """
 from __future__ import annotations
-import json, shutil
+import json, math, shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +39,30 @@ META = {
 }
 
 
+def lattice_and_positions(m: dict):
+    """Explicit primitive cell (matches the gold's construction exactly).
+    Returns (lattice_vectors_bohr, atom_positions_frac):
+    lattice_vectors_bohr = [a1, a2, a3] = the COLUMNS of the DFTK lattice matrix."""
+    a = m["a"]
+    if m["bravais"] == "bcc":
+        vecs = [[-a/2, a/2, a/2], [a/2, -a/2, a/2], [a/2, a/2, -a/2]]
+        pos = [[0.0, 0.0, 0.0]]
+    elif m["bravais"] == "fcc":
+        vecs = [[0.0, a/2, a/2], [a/2, 0.0, a/2], [a/2, a/2, 0.0]]
+        pos = [[0.0, 0.0, 0.0]]
+    elif m["bravais"] == "hcp":
+        c = a * m["ca"]
+        vecs = [[a, 0.0, 0.0], [a/2, a * math.sqrt(3) / 2, 0.0], [0.0, 0.0, c]]
+        pos = [[0.0, 0.0, 0.0], [1/3, 2/3, 1/2]]
+    else:
+        raise ValueError(f"unsupported bravais {m['bravais']}")
+    return vecs, pos
+
+
 def config_for(el: str, m: dict) -> dict:
+    vecs, pos = lattice_and_positions(m)
     struct = {"bravais": m["bravais"], "a_bohr": m["a"],
+              "lattice_vectors_bohr": vecs, "atom_positions_frac": pos,
               "path": {"from": m["path"][0], "to": m["path"][1],
                        "endpoint_frac": m["path"][2]}}
     if m["ca"] is not None:
@@ -55,7 +77,12 @@ def config_for(el: str, m: dict) -> dict:
                 "kgrid": m["kgrid"], "smearing_Ha": 0.001},
         "frozen_core": {"core_s_channels": m["core_s"], "valence": m["valence"],
                         "core_model_file": "core_model.json"},
-        "note": "t in grid.csv is fractional along Gamma->endpoint: k_frac = t * endpoint_frac.",
+        "note": ("Build the cell from structure.lattice_vectors_bohr (the three "
+                 "primitive lattice vectors a1,a2,a3 in Bohr; in DFTK use them as "
+                 "the COLUMNS of the `lattice` matrix) and structure.atom_positions_frac "
+                 "(fractional coordinates, one per atom -- NOT necessarily a single "
+                 "atom). t in grid.csv is fractional along Gamma->endpoint: "
+                 "k_frac = t * endpoint_frac."),
     }
 
 
@@ -99,6 +126,12 @@ The pseudopotential is a PseudoPotentialData family identifier — load it by na
 using DFTK, PseudoPotentialData
 psp = load_psp(PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"), Symbol(element))
 ```
+
+Build the crystal from the config: `structure.lattice_vectors_bohr` are the
+three primitive lattice vectors a1,a2,a3 in Bohr (in DFTK use them as the COLUMNS
+of the `lattice` matrix), and `structure.atom_positions_frac` are the fractional
+atom coordinates — there may be MORE THAN ONE atom (e.g. hcp has two), so do not
+assume a single-atom cell.
 
 From the DFTK run you need, per k-point: the KS eigenvalues, the Fermi level
 `εF`, the plane-wave coefficients `c_nk(G)` of each Bloch state, the integer

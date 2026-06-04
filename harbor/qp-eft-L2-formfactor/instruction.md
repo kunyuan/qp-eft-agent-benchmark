@@ -37,6 +37,12 @@ using DFTK, PseudoPotentialData
 psp = load_psp(PseudoFamily("cp2k.nc.sr.lda.v0_1.largecore.gth"), Symbol(element))
 ```
 
+Build the crystal from the config: `structure.lattice_vectors_bohr` are the
+three primitive lattice vectors a1,a2,a3 in Bohr (in DFTK use them as the COLUMNS
+of the `lattice` matrix), and `structure.atom_positions_frac` are the fractional
+atom coordinates — there may be MORE THAN ONE atom (e.g. hcp has two), so do not
+assume a single-atom cell.
+
 From the DFTK run you need, per k-point: the KS eigenvalues, the Fermi level
 `εF`, the plane-wave coefficients `c_nk(G)` of each Bloch state, the integer
 `G`-vectors, and the reciprocal lattice (to form `|k+G|` in Bohr^-1). Compute
