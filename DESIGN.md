@@ -1,11 +1,14 @@
 # Benchmark Design: Frozen-Core Quasiparticle Bands
 
-Status: **draft / in progress** (branch `benchmark-redesign`).
+Status: **built & validated** (branch `benchmark-redesign`, PR #1).
 Source physics: *Kohn–Sham Hamiltonian from Effective Field Theory: Quasiparticle
 Band Narrowing from Frozen Core Dynamics* (arXiv:2604.25199).
 
-This document is the design contract. It records what the benchmark measures, how
-it is graded, and the decisions behind it. It is **not** agent-facing.
+This document is the design contract — what the benchmark measures, how it is
+graded, and the decisions behind it. It is **not** agent-facing. As-built status:
+three levels (L1/L2/L3) are assembled (`agent_packet/`, `evaluator/hidden/`) and
+packaged as Harbor tasks (`harbor/`); the gold reproduces the paper; fresh solver
+agents pass L1 (3 independent runs) and L2 through the hardened evaluator.
 
 ---
 
@@ -43,7 +46,7 @@ The levels differ only in **how much the `agent_packet/` withholds**.
 | Level | Packet gives | Packet withholds | Primarily tests |
 |-------|--------------|------------------|-----------------|
 | **L1** | `z_core` closed form **and** precomputed `f_c(K)` tables + `DeltaE_c` | numerical answer (`z_core_gamma`), per-element values | DFTK wiring, correct application, generalization (floor) |
-| **L2** | `z_core` closed form; atomic core radial data `u_c(r)`, `V_{H,c}(r)`, `J_c`, `DeltaE_c` | `f_c(K)` tables, `z_core_gamma` | implementing the form-factor quadrature (Eq. 7), extracting `c_nk(G)` from DFTK, assembling `z_core(n,k)` |
+| **L2** | `z_core` closed form; atomic core radial data `u_c(r)`, `V_{H,c}(r)`, `DeltaE_c`; `J_c` computed from radial data | `f_c(K)` tables, `z_core_gamma` | implementing the form-factor quadrature (Eq. 7), extracting `c_nk(G)` from DFTK, assembling `z_core(n,k)` |
 | **L3** | physical setup only (the two conditions, dual-fermion mechanism narrative, "missing physics is dynamical frozen-core"); atomic core radial data | the entire `z_core` / `F_c` formula | deriving `z_core` from the EFT and implementing it |
 
 All three are scored identically on held-out elements; "generalization" is inherent
@@ -54,63 +57,84 @@ because the agent writes code against Na/Al only and is graded on concealed meta
 ## 3. Evaluation protocol
 
 - **Development set (agent-visible):** Na, Al.
-- **Graded set (hidden, anonymized):** K, Mg, Ca, Li, Si (+ spares). The element
-  identity is **not** revealed to the solver — only `agent_packet/` (Na, Al) is.
-- **DFTK in loop:** the evaluator runs the submitted `run_qp.py` in an **offline
-  sandbox** (no network) on each hidden config+grid; the runner internally calls
-  DFTK to produce KS bands, then applies the correction.
+- **Graded set (hidden):** K, Mg (Ca/Li/Si deferred — see §7 notes). Only
+  `agent_packet/` (Na, Al) is given to the solver; the held-out metals are
+  concealed.
+- **DFTK in loop:** the evaluator runs the submitted `run_qp.py` on each hidden
+  config+grid; the runner internally calls DFTK to produce KS bands, then applies
+  the correction.
 - **Ground truth:** the held-out ARPES references (this repo, `arpes_reference.csv`)
   are the falsifiable target. A **gold reference solution** (this repo, not
-  agent-facing) reproduces the paper's Table I and supplies (a) the occupied-band
-  cardinality at each k-point and (b) calibration of the RMSE thresholds.
+  agent-facing) reproduces the paper's Table I and supplies (a) the band
+  cardinality at each k-point (occupied + first unoccupied) and (b) calibration of
+  the RMSE thresholds.
 
-### Anti-cheat (decided: rely on no-network + concealed set, no counterfactuals)
+### Anti-cheat (as built)
 
-The solver never sees the test elements when writing code, so memorized ARPES
-numbers cannot be injected into code that must also work on unknown metals — unless
-it hardcodes per-element branches, which are forbidden and cannot survive the
-concealed set. Hardening:
+The element identity is **kept** in the config (the runner needs it to load the
+pseudopotential, and `Z_nuclear` reveals it anyway — hiding it buys nothing). The
+concealment is the test *set*, not the runtime name:
 
-1. Strip the `element` name field from hidden configs (the code must not need it).
-2. No-network sandbox for the runner at eval time.
-3. No-hardcode audit + the KS-baseline gate (§4): the correction must be *necessary*
-   to pass, so a memorized/plumbing-only submission fails.
-
----
-
-## 4. Scoring (fixes the current exploit)
-
-**Current bug:** `validate_submission.py` picks, per `point_id`, the *nearest of an
-unlimited set* of predicted bands. Flooding predictions across the energy window
-drives RMSE → 0 with zero physics and no DFTK. Fatal.
-
-**Fix:**
-- The runner must output **exactly the occupied band set** at each k-point. The
-  evaluator knows the occupied-band cardinality `n_occ(point_id)` from the gold
-  reference; submissions with `n_pred != n_occ` are penalized (extra/missing bands).
-- Match predicted ↔ reference bands by **one-to-one assignment** (Hungarian), not
-  nearest-of-many.
-- **KS-baseline gate:** a bare uncorrected-KS submission must score FAIL. Passing
-  requires the correction to close the KS→ARPES gap. This is the real signal that
-  the agent did the physics.
-- Per-element verdict by RMSE thresholds (calibrated from the gold reference, not
-  the current hand-set 0.20/0.40); overall = aggregate over the hidden set.
+1. **Sanitized runner inputs** — the runner is handed an input dir with **no
+   `arpes_reference.csv`**, so it cannot read the answers sitting next to the
+   config (a real hole — the agent could discover it on Na/Al at dev time). In the
+   Harbor tasks the runner also runs as `nobody` with `/tests/{hidden,gold}`
+   root-only.
+2. **Concealed test set + no-hardcode audit** — the solver writes generic code
+   against Na/Al only; memorized per-element numbers can't enter code that must run
+   on unknown metals without a forbidden per-element branch.
+3. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
+   memorized/plumbing-only submission fails.
 
 ---
 
-## 5. Engineering fixes (no decision needed)
+## 4. Scoring (as built)
 
-- **k-path spec:** define `Gamma-N`, `Gamma-X`, `Gamma-A` as exact reciprocal
-  fractional coordinates (Setyawan–Curtarolo) so two correct implementations agree
-  on the k-vectors. Map grid `t=0 -> Gamma`, `t=1 -> endpoint`.
-- **DFTK reproducibility:** pin DFTK `0.7.25`, pseudo family
-  `cp2k.nc.sr.lda.v0_1.largecore.gth` (valence counts match the configs:
-  Na/K/Li q1, Mg/Ca q2, Al q3, Si q4), converged `Ecut` (validate 30 Ha is enough),
-  Fermi–Dirac smearing `0.001 Ha`. Manifest committed under `environment/`.
-- **Atomic core data schema (L2/L3):** per element, the dominant core channel(s)
-  `c` with reduced radial wavefunction `u_c(r)` on a uniform grid, orbital Hartree
-  potential `V_{H,c}(r)`, self-Coulomb `J_c`, and excitation energy `DeltaE_c`.
-  Generated by the gold reference's radial atomic solver; committed as data files.
+The original scorer picked, per `point_id`, the *nearest of an unlimited set* of
+predicted bands → flooding the energy window drove RMSE → 0 with zero physics.
+Fatal. The scorer (`evaluator/validate_submission.py`, mirrored in each Harbor
+`tests/score.py`) now:
+
+- **Band-set shape (`INVALID_SHAPE`):** every reference point must be predicted with
+  **exactly** the gold band count per k-point (occupied bands + the first unoccupied
+  band — see §5c). Closes flooding, "sparse" (drop hard points), and "under-band"
+  cheats. Honest agents on the pinned setup match exactly.
+- **Nearest-band RMSE** is then safe (n_pred = 1–4 bands, well-separated).
+- **KS-baseline gate:** a bare uncorrected-KS submission scores ~0.4–0.6 eV and
+  FAILs; `ks_baseline_rmse_eV` is reported for audit. The correction is *necessary*.
+- **Sanitized inputs:** the runner never receives `arpes_reference.csv` (§3).
+- **Thresholds** (calibrated from the gold): PASS < 0.30, PARTIAL 0.30–0.40, FAIL.
+  Overall = aggregate over the hidden set; any per-element disqualifier
+  (`REJECTED_FLOODING` / `INVALID_SHAPE` / `NO_PREDICTION`) sinks the submission.
+
+---
+
+## 5. Engineering (as built)
+
+- **Structure spec:** the config carries the explicit `lattice_vectors_bohr`
+  (columns of the DFTK lattice) and `atom_positions_frac` (≥1 atom). This is INPUT
+  (like the pseudo), not the answer; it's required because the public dev set is
+  cubic 1-atom (Na bcc, Al fcc) while hidden Mg is hcp 2-atom — without it a generic
+  solver cannot build Mg's cell. Path: `endpoint_frac` + `k_frac = t*endpoint_frac`.
+- **DFTK reproducibility:** DFTK `0.7.25`, pseudo family
+  `cp2k.nc.sr.lda.v0_1.largecore.gth` (valence Na/K/Li q1, Mg/Ca q2, Al q3, Si q4),
+  **per-element Ecut (15 for Na/K, 20 for Li/Ca/Mg/Al/Si)** and kgrid matching the
+  authors' setup, Fermi–Dirac smearing `0.001 Ha`. Manifest committed under
+  `environment/`.
+- **Atomic core data schema (L2/L3):** per core s-channel, `atomic_core_<c>.csv`
+  (`r_bohr,u_c,V_H_c`) + `core_model.json` (`DeltaE_c`). L1 instead ships
+  `fc_table_<c>.csv` (precomputed `f_c(K)`). Generated by the gold's radial atomic
+  solver; committed as data files.
+
+## 5c. Which bands to emit (occupied + first unoccupied)
+
+At each k-point, ascending in energy, emit every occupied band (`E_KS < E_F`) plus
+the single lowest unoccupied band, then stop (count = `n_occ + 1`). No empirical eV
+margin: this captures a Fermi-crossing band edge (where ARPES resolves a band just
+below E_F that DFT places just above) and is robust to the exact εF placement at the
+edge. (An earlier `+0.5 eV` margin was replaced because it was arbitrary and
+εF-sensitive.) `E_pred = E_QP − E_F` may be slightly positive for that first
+unoccupied band.
 
 ---
 
@@ -146,26 +170,37 @@ nearest-of-many matching.
 | Mg | 0.635 / −0.587 | 0.213 / −0.029 |
 | Al | 0.423 / −0.390 | 0.231 / −0.130 |
 
-Caveats found during validation (feed into the evaluator + packet rebuild):
-- **Multi-band output is mandatory** for Mg/Al/Ca/Si (the ARPES tracks a band that
-  disperses; lowest-band-only fails). The runner outputs all occupied bands.
-- **Nearest-band matching is forgiving** (it's how validation passed) but is the
-  gameable path — the real evaluator must use one-to-one assignment vs the gold
-  occupied-band set, not nearest-of-many.
-- **Per-element path mapping is inconsistent in codex's grids.** Each experiment
-  uses different x-units (Na: Å⁻¹ ÷ |Γ-N|; K: already fractional; Mg: Γ-A-Γ folded,
-  x extends to 1.67×|Γ-A|; Al: Γ-X). The benchmark grids + ARPES references must be
-  **regenerated from the raw `reference/expts/*.csv`** with one correct convention,
-  not trusted from codex.
+Notes (resolved during validation):
+- **Multi-band output is mandatory** for Mg/Al (the ARPES tracks several dispersing
+  bands). The runner emits occupied + first unoccupied (§5c).
+- **Nearest-band matching is safe here**, not gameable: the flooding/`INVALID_SHAPE`
+  guards force exactly the gold band count, and the occupied bands are 3–4 eV apart,
+  so nearest-match is effectively per-band assignment. Verified on Mg: each ARPES
+  point lands coherently on its band (deep→band1, mid→band2, shallow→band3) with
+  small residuals — genuine per-band agreement, not loose matching. (A Hungarian
+  assignment was considered and found unnecessary.)
+- **Mg path is fine.** The earlier worry that codex's grids were mis-mapped was a
+  misread (I'd taken a single deep ARPES point as Γ): the per-band check shows the
+  Mg gold reproduces the experiment band-by-band, consistent with the paper. No grid
+  regeneration was needed.
+- **Al's worst point** is a single Γ-X Fermi-crossing band edge (DFT +0.08, ARPES
+  −0.23 eV) — handled by the occupied+first-unoccupied rule (§5c). Al is public/dev,
+  not scored.
 
-## 6. Open build tasks
+## 6. Status & remaining
 
-1. **[in progress]** Validate DFTK KS bandwidth for Na (`E(Γ)-E_F ≈ -3.27 eV`).
-2. Gold reference `run_qp.py`: DFTK valence bands + atomic `f_c` solver +
-   `z_core(n,k)` → reproduce Table I for Na/Al/K/Mg/Ca/Li/Si. Calibrate thresholds.
-3. Fix evaluator scoring + KS-baseline gate using gold cardinalities.
-4. Restructure `agent_packet/` into L1/L2/L3; remove `z_core_gamma` and `element`
-   from hidden configs; add k-path spec and atomic core data files.
+**Done:** gold reproduces Table I (Na KS −3.266 / QP −2.616); L1/L2/L3 packets +
+hidden sets assembled; evaluator scoring (shape guard + KS gate + sanitized inputs)
++ Harbor tasks; band rule and structure spec finalized; fresh agents pass L1 (×3)
+and L2 through the hardened evaluator; verifier hardening integrated (was codex
+PR#2). Threshold/anti-cheat regression tests pass.
+
+**Remaining / optional:**
+- Container `run-as-nobody` needs a Docker run to confirm depot permissions (no
+  Docker on the build host).
+- Optional Li/Ca calibration anchors (Ca's EFT-vs-experiment gap is the worst, 0.24
+  eV; Li has only eDMFT, no ARPES — frame as reference, not fit targets).
+- Optional L3 agent run (frontier "derive the formula" rung; not yet agent-tested).
 
 ---
 
@@ -204,5 +239,6 @@ atomic solver + coherent z_core correction). **Reproduced exactly in our env**
 | Si | diamond | 10.263  | 20   | 6³    | 4    | 2s     | —         | (gap)     | —         | —     |
 
 Notes: Li uses an analytic hydrogenic 1s form factor; Si is a semiconductor (gap
-observable, different); LiH is a compound test. **Core simple-metal set for the
-benchmark: Na, Al (public dev) + K, Mg, Ca, Li (hidden).** Si/LiH = advanced/optional.
+observable, different); LiH is a compound test. **As-built benchmark set: Na, Al
+(public dev) + K, Mg (hidden).** Ca/Li/Si = optional future additions (Ca needs
+EMS data digitized; Li has no ARPES; Si's correction is too small to discriminate).

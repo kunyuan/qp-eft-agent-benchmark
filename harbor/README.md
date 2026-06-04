@@ -36,10 +36,11 @@ qp-eft-L2-formfactor/
 │   ├── solve.sh         # installs the reference run_qp.py at /app/run_qp.py
 │   ├── run_qp.py, gold_runner.jl, atomic_hf.jl
 └── tests/               # verifier (NOT shown to the agent)
-    ├── test.sh          # runs /app/run_qp.py on hidden K,Mg; writes /logs/verifier/reward.txt
-    ├── score.py         # flooding guard + KS-baseline gate + thresholds
-    ├── hidden/{K,Mg}/   # concealed metals (config+grid+ARPES+atomic data)
-    └── gold/            # gold occupied-band references
+    ├── test.sh          # sanitizes inputs (drops ARPES), runs /app/run_qp.py as
+    │                    #   `nobody` on hidden K,Mg; writes /logs/verifier/reward.txt
+    ├── score.py         # shape guard (flooding/INVALID_SHAPE) + KS-baseline gate + thresholds
+    ├── hidden/{K,Mg}/   # concealed metals (config+grid+ARPES+level data)
+    └── gold/            # gold band refs (occupied + first unoccupied)
 ```
 
 The agent only sees `instruction.md` + the container (`environment/`, incl.
@@ -64,18 +65,18 @@ continuous reward, map `score.py`'s RMSE instead of thresholding.)
 
 ## What is validated
 
-- **Verifier scoring** (`score.py` + `test.sh` logic) is checked locally: the
-  oracle's QP output scores PASS (reward 1, mean 0.163 eV); bare KS scores FAIL
-  (reward 0, 0.524 eV).
-- The full `run_qp.py → DFTK → predictions` pipeline is validated outside the
-  container (see `../reference/`, `../DESIGN.md`).
-- Building/running the container itself requires Docker (provided by Harbor);
-  it was not built here.
-
-## Run (with Docker + Harbor)
+- **End-to-end on the host** (same code as the container, minus Docker): the gold
+  oracle and **fresh solver agents** pass the hardened evaluator on the concealed
+  K/Mg — L1 (3 independent agents) and L2 (which must implement the form-factor
+  quadrature itself), all overall PASS ≈ 0.163 eV; bare KS / sparse / under-band /
+  ARPES-copy submissions are rejected.
+- **Container build + `run-as-nobody`** require Docker (not available on the build
+  host). Build the image and run the oracle to confirm depot permissions:
 
 ```bash
-harbor run --task harbor/qp-eft-L2-formfactor --agent <your-agent>
-# oracle sanity check (task is solvable):
-harbor run --task harbor/qp-eft-L2-formfactor --solution
+harbor run --agent oracle --path harbor/qp-eft-L1-apply      # check the task is solvable (Mean: 1.000)
+harbor run --agent claude-code --path harbor/qp-eft-L2-formfactor  # run a real agent
 ```
+
+`--agent` accepts `oracle`, `claude-code`, `codex`, etc.; results print as a mean
+reward (1.0 = PASS).
