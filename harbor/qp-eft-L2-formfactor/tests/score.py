@@ -78,6 +78,19 @@ def score_element(ref, pred, gold_qp, gold_ks):
                 "n_points_over_band_cap": len(over), "total_predicted_bands": total_pred,
                 "total_gold_bands": total_gold}
     scored = sorted(set(ref) & set(pred))
+    missing = sorted(set(ref) - set(pred))
+    unexpected = sorted(set(pred) - set(ref))
+    mismatches = {
+        str(p): {"expected": n_occ.get(p, 0), "got": len(pred.get(p, []))}
+        for p in sorted(ref)
+        if p in pred and len(pred.get(p, [])) != n_occ.get(p, 0)
+    }
+    if missing or unexpected or mismatches:
+        return {"verdict": "INVALID_SHAPE", "rmse_eV": None,
+                "n_scored": len(scored), "n_missing": len(missing),
+                "n_unexpected": len(unexpected), "n_points_over_band_cap": len(over),
+                "band_count_mismatches": mismatches,
+                "note": "predictions must cover every reference point with exactly the gold occupied-band count"}
     if not scored:
         return {"verdict": "NO_PREDICTION", "rmse_eV": None, "n_scored": 0}
     res = [min(pred[p], key=lambda v: abs(v - ref[p])) - ref[p] for p in scored]
@@ -108,7 +121,16 @@ def main():
     rmses = [r["rmse_eV"] for r in per.values() if r.get("rmse_eV") is not None]
     mean = sum(rmses) / len(rmses) if rmses else None
     rejected = any(r.get("verdict") == "REJECTED_FLOODING" for r in per.values())
-    overall = "REJECTED_FLOODING" if rejected else verdict(mean)
+    invalid = any(r.get("verdict") == "INVALID_SHAPE" for r in per.values())
+    empty = any(r.get("verdict") == "NO_PREDICTION" for r in per.values())
+    if rejected:
+        overall = "REJECTED_FLOODING"
+    elif invalid:
+        overall = "INVALID_SHAPE"
+    elif empty:
+        overall = "NO_PREDICTION"
+    else:
+        overall = verdict(mean)
     result = {"per_element": per,
               "overall": {"mean_rmse_eV": round(mean, 6) if mean is not None else None,
                           "verdict": overall,

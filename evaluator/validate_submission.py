@@ -22,6 +22,7 @@ import argparse
 import csv
 import json
 import math
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,24 @@ def read_predictions(path: Path) -> dict[int, list[float]]:
             if v:
                 out.setdefault(int(r["point_id"]), []).append(float(v))
     return out
+
+
+def copy_runner_inputs(element_dir: Path, dst: Path) -> None:
+    """Copy only agent-visible hidden inputs; keep ARPES/gold scoring files private."""
+    dst.mkdir(parents=True, exist_ok=True)
+    for src in sorted(element_dir.iterdir()):
+        if src.name == "arpes_reference.csv":
+            continue
+        target = dst / src.name
+        if src.is_dir():
+            shutil.copytree(src, target)
+        elif src.suffix == ".json":
+            data = json.loads(src.read_text())
+            if isinstance(data, dict):
+                data.pop("element", None)
+            target.write_text(json.dumps(data, indent=2) + "\n")
+        else:
+            shutil.copy2(src, target)
 
 
 def read_gold(path: Path) -> tuple[dict[int, list[float]], dict[int, list[float]]]:
@@ -107,6 +126,7 @@ def score_element(
 
     scored = sorted(set(reference) & set(predictions))
     missing = sorted(set(reference) - set(predictions))
+    unexpected = sorted(set(predictions) - set(reference))
     if flooding:
         return {
             "verdict": "REJECTED_FLOODING",
@@ -117,6 +137,22 @@ def score_element(
             "total_predicted_bands": total_pred,
             "total_gold_bands": total_gold,
             "note": "predictions exceed gold occupied-band count; cannot pass",
+        }
+    band_count_mismatches = {
+        str(pid): {"expected": n_occ.get(pid, 0), "got": len(predictions.get(pid, []))}
+        for pid in sorted(reference)
+        if pid in predictions and len(predictions.get(pid, [])) != n_occ.get(pid, 0)
+    }
+    if missing or unexpected or band_count_mismatches:
+        return {
+            "verdict": "INVALID_SHAPE",
+            "rmse_eV": None,
+            "n_scored": len(scored),
+            "n_missing": len(missing),
+            "n_unexpected": len(unexpected),
+            "n_points_over_band_cap": len(over),
+            "band_count_mismatches": band_count_mismatches,
+            "note": "predictions must cover every reference point with exactly the gold occupied-band count",
         }
     if not scored:
         return {"verdict": "NO_PREDICTION", "rmse_eV": None,
@@ -147,12 +183,16 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
     per_element: dict[str, object] = {}
     with tempfile.TemporaryDirectory(prefix="qp_eft_validation_") as tmp:
         out_dir = Path(tmp)
-        for element_dir in sorted(p for p in hidden_dir.iterdir() if p.is_dir()):
+        input_root = out_dir / "runner_inputs"
+        for i, element_dir in enumerate(sorted(p for p in hidden_dir.iterdir() if p.is_dir()), start=1):
             el = element_dir.name
-            out_csv = out_dir / f"{el}_qp_bands.csv"
+            case = f"case_{i:03d}"
+            runner_input = input_root / f"case_{i:03d}"
+            copy_runner_inputs(element_dir, runner_input)
+            out_csv = out_dir / f"{case}_qp_bands.csv"
             cmd = [sys.executable, str(runner),
-                   "--element-config", str(element_dir / "element_config.json"),
-                   "--grid", str(element_dir / "grid.csv"),
+                   "--element-config", str(runner_input / "element_config.json"),
+                   "--grid", str(runner_input / "grid.csv"),
                    "--out", str(out_csv)]
             proc = subprocess.run(cmd, cwd=submission_dir, text=True, capture_output=True)
             if proc.returncode != 0:
@@ -169,7 +209,18 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
     mean_rmse = sum(rmses) / len(rmses) if rmses else None
     any_rejected = any(isinstance(r, dict) and r.get("verdict") == "REJECTED_FLOODING"
                        for r in per_element.values())
-    overall = "REJECTED_FLOODING" if any_rejected else verdict(mean_rmse)
+    any_invalid = any(isinstance(r, dict) and r.get("verdict") == "INVALID_SHAPE"
+                      for r in per_element.values())
+    any_empty = any(isinstance(r, dict) and r.get("verdict") == "NO_PREDICTION"
+                    for r in per_element.values())
+    if any_rejected:
+        overall = "REJECTED_FLOODING"
+    elif any_invalid:
+        overall = "INVALID_SHAPE"
+    elif any_empty:
+        overall = "NO_PREDICTION"
+    else:
+        overall = verdict(mean_rmse)
     return {
         "per_element": per_element,
         "overall": {

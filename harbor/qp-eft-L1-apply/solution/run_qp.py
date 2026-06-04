@@ -7,6 +7,14 @@ import argparse, json, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ELEMENT_BY_Z = {3: "Li", 11: "Na", 12: "Mg", 13: "Al", 14: "Si", 19: "K", 20: "Ca"}
+
+
+def element_from_config(path):
+    cfg = json.loads(Path(path).read_text())
+    if cfg.get("element"):
+        return cfg["element"]
+    return ELEMENT_BY_Z[int(cfg["Z_nuclear"])]
 
 
 def main() -> int:
@@ -15,7 +23,7 @@ def main() -> int:
     p.add_argument("--grid", required=True)
     p.add_argument("--out", required=True)
     a = p.parse_args()
-    element = json.loads(Path(a.element_config).read_text())["element"]
+    element = element_from_config(a.element_config)
     r = subprocess.run(["julia", str(HERE / "gold_runner.jl"), element, a.grid, a.out],
                        text=True, capture_output=True)
     if r.returncode != 0:
