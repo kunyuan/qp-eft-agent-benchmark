@@ -97,6 +97,10 @@ band count per point, so do not emit extra bands.
   GTH pseudopotentials are already installed locally). Do not download data, clone
   repositories, query web services, or otherwise reach the network at run time — a
   submission whose prediction depends on a network call is invalid.
+- **Solve from this packet only — no external lookup.** Do not search the web for
+  or otherwise consult the underlying research paper, its derivation, the answers,
+  or any external code/data for this problem. The task is to reconstruct the
+  physics from what is provided here, not to retrieve it from an outside source.
 
 ## Scoring
 

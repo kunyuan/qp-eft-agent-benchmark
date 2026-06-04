@@ -83,14 +83,26 @@ concealment is the test *set*, not the runtime name:
 2. **Concealed test set + no-hardcode audit** — the solver writes generic code
    against Na/Al only; memorized per-element numbers can't enter code that must run
    on unknown metals without a forbidden per-element branch.
-3. **No-network rule** — `run_qp.py` is forbidden from network access (stated in
-   the instruction); everything is computed from the local inputs + DFTK, which
-   runs offline. This blocks fetching the answers online (e.g. cloning the authors'
-   `eft-psp` repo, which has the K/Mg band data). NB: this is a *rule*, not yet a
-   container-enforced control — Harbor can enforce it via a verifier network policy
-   (`[verifier] network_mode = "no-network"`), but that needs a provider with
-   dynamic network policy (E2B) or a separate verifier env, and is **not** set by
-   default. To hard-enforce, run the verifier in a no-network sandbox.
+3. **No network / no external lookup** — two instruction rules: (a) `run_qp.py`
+   must not reach the network at run time (compute from local inputs + DFTK,
+   offline); (b) the agent must not consult external sources while solving — no web
+   search, no looking up the underlying paper / its derivation / the answers / the
+   `eft-psp` repo (which has the K/Mg band data). (b) matters most for **L3**: the
+   paper is public, so live lookup would let the agent *read* the derivation
+   instead of producing it.
+   - **Enforcement (rule → control):** these are rules by default. To enforce:
+     run the verifier offline (Harbor `[verifier] network_mode = "no-network"`, or
+     a `--network none` sandbox), and restrict the *agent* phase to an allowlist of
+     only its model-API host (Harbor `[agent] network_mode = "allowlist"`) or run it
+     with no web tools. Both are provider/harness-dependent and **not** set by
+     default (a per-phase network override needs a provider with dynamic policy,
+     e.g. E2B).
+   - **Residual limit (cannot be controlled):** the paper is public and likely in
+     the agent's *training data*, so a strong model could recall the closed-form
+     `z_core` even fully offline. Network controls stop *live* lookup, not memory.
+     This is intrinsic to **L3** (derive a published result); L1/L2 are unaffected
+     (the formula is given there, and the hidden answers are per-point band data
+     that can't be memorized precisely and aren't known to be the test set).
 4. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
    memorized/plumbing-only submission fails.
 
