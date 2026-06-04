@@ -16,6 +16,13 @@ def write_csv(path, rows):
         writer.writerows(rows)
 
 
+def write_gold(gold_dir, element, rows):
+    # rows: [element, point_id, t, E_pred_eV, E_KS_eV, Delta]
+    gold_dir.mkdir(parents=True, exist_ok=True)
+    write_csv(gold_dir / f"{element}_gold.csv",
+              [["element", "point_id", "t", "E_pred_eV", "E_KS_eV", "Delta"]] + rows)
+
+
 def test_validator_scores_nearest_band_predictions(tmp_path):
     hidden = tmp_path / "hidden"
     element_dir = hidden / "X"
@@ -25,6 +32,9 @@ def test_validator_scores_nearest_band_predictions(tmp_path):
         [["point_id", "t", "E_expt_eV"], [1, 0.0, -2.0], [2, 1.0, -1.0]],
     )
     (element_dir / "element_config.json").write_text('{"element": "X"}\n')
+    gold = tmp_path / "gold"
+    write_gold(gold, "X", [["X", 1, 0.0, -2.5, -2.7, 0.08], ["X", 1, 0.0, -2.02, -2.2, 0.09],
+                           ["X", 2, 1.0, -1.01, -1.1, 0.09]])
 
     submission = tmp_path / "submission"
     submission.mkdir()
@@ -58,6 +68,8 @@ def test_validator_scores_nearest_band_predictions(tmp_path):
             str(submission),
             "--hidden-dir",
             str(hidden),
+            "--gold-dir",
+            str(gold),
             "--json",
             str(result_json),
         ],
@@ -99,48 +111,37 @@ def test_validator_rejects_missing_runner(tmp_path):
     assert "run_qp.py" in proc.stderr
 
 
-def test_validator_rejects_too_many_bands_per_point(tmp_path):
+def test_validator_rejects_flooding_submission(tmp_path):
+    # An agent that floods each k-point with a dense energy grid (to make
+    # nearest-band matching trivial) is rejected, not scored.
     hidden = tmp_path / "hidden"
-    element_dir = hidden / "K"
-    write_csv(element_dir / "grid.csv", [["point_id", "t"], [1, 0.0]])
-    write_csv(element_dir / "arpes_reference.csv", [["point_id", "t", "E_expt_eV"], [1, 0.0, -1.0]])
-    (element_dir / "element_config.json").write_text('{"element": "K"}\n')
+    element_dir = hidden / "X"
+    write_csv(element_dir / "grid.csv", [["point_id", "t"], [1, 0.0], [2, 0.5]])
+    write_csv(element_dir / "arpes_reference.csv",
+              [["point_id", "t", "E_expt_eV"], [1, 0.0, -2.0], [2, 0.5, -1.0]])
+    (element_dir / "element_config.json").write_text('{}\n')
+    gold = tmp_path / "gold"
+    write_gold(gold, "X", [["X", 1, 0.0, -2.0, -2.3, 0.1], ["X", 2, 0.5, -1.0, -1.2, 0.1]])
 
     submission = tmp_path / "submission"
     submission.mkdir()
-    runner = submission / "run_qp.py"
-    runner.write_text(
-        "\n".join(
-            [
-                "import argparse, csv",
-                "p = argparse.ArgumentParser()",
-                "p.add_argument('--element-config')",
-                "p.add_argument('--grid')",
-                "p.add_argument('--out')",
-                "args = p.parse_args()",
-                "with open(args.out, 'w', newline='') as f:",
-                "    w = csv.writer(f)",
-                "    w.writerow(['element', 'point_id', 't', 'E_pred_eV'])",
-                "    w.writerow(['K', 1, 0.0, -2.5])",
-                "    w.writerow(['K', 1, 0.0, -1.0])",
-            ]
-        )
-        + "\n"
+    (submission / "run_qp.py").write_text(
+        "\n".join([
+            "import argparse, csv",
+            "p = argparse.ArgumentParser()",
+            "p.add_argument('--element-config'); p.add_argument('--grid'); p.add_argument('--out')",
+            "a = p.parse_args()",
+            "w = csv.writer(open(a.out, 'w', newline=''))",
+            "w.writerow(['element','point_id','t','E_pred_eV'])",
+            "[w.writerow(['X', pid, 0.0, round(-5.0+0.05*i, 3)]) for pid in (1,2) for i in range(120)]",
+        ]) + "\n"
     )
 
     proc = subprocess.run(
-        [
-            sys.executable,
-            str(VALIDATOR),
-            "--submission-dir",
-            str(submission),
-            "--hidden-dir",
-            str(hidden),
-        ],
-        text=True,
-        capture_output=True,
+        [sys.executable, str(VALIDATOR), "--submission-dir", str(submission),
+         "--hidden-dir", str(hidden), "--gold-dir", str(gold)],
+        text=True, capture_output=True,
     )
-
-    assert proc.returncode == 2
-    assert "too many bands" in proc.stderr
-    assert "K point_id=1" in proc.stderr
+    assert proc.returncode != 0, proc.stdout
+    result = json.loads(proc.stdout)
+    assert result["per_element"]["X"]["verdict"] == "REJECTED_FLOODING", result
