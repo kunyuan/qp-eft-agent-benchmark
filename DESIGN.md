@@ -128,6 +128,24 @@ All four simple metals confirm the correction is **necessary and sufficient**:
 **Calibrated thresholds: PASS < 0.30 eV, PARTIAL 0.30–0.40, FAIL > 0.40 eV.**
 Separates every QP from every KS; KS-baseline gate satisfied automatically.
 
+**Per-band before/after** (`reference/validate_bands.py`, same band assignment):
+the correction acts exactly where the physics says it should. For multi-band
+Mg/Al the *deep* band carries the DFT overbinding (KS RMSE 0.42–0.64 eV, mean
+−0.4 to −0.6) and is pulled into agreement (2–3×), while bands *near E_F* barely
+move (1.0×) because `z_core·(E_KS−E_F) → 0` at the Fermi level. The systematic
+overbinding (negative KS mean) is removed in every case (QP mean → ~0). The
+coherent per-band match (deep→band1, mid→band2, shallow→band3 for Mg, with the
+experiment tracking the real bands) also confirms the k-mapping is sound for the
+multi-band elements — the score is genuine per-band agreement, not loose
+nearest-of-many matching.
+
+| El | DFT band-1 RMSE / mean | QP band-1 RMSE / mean |
+|----|------------------------|-----------------------|
+| Na | 0.413 / −0.366 | 0.079 / −0.009 |
+| K  | 0.614 / −0.599 | 0.139 / −0.033 |
+| Mg | 0.635 / −0.587 | 0.213 / −0.029 |
+| Al | 0.423 / −0.390 | 0.231 / −0.130 |
+
 Caveats found during validation (feed into the evaluator + packet rebuild):
 - **Multi-band output is mandatory** for Mg/Al/Ca/Si (the ARPES tracks a band that
   disperses; lowest-band-only fails). The runner outputs all occupied bands.
