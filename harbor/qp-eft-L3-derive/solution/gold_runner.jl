@@ -127,9 +127,11 @@ function run(element, gridfile, outfile)
         kfrac = kpts[i]
         Gs = collect(DFTK.G_vectors(bands.basis, bands.basis.kpoints[i]))
         nb = length(bands.eigenvalues[i])
+        # bands are energy-ordered: emit occupied bands + the first unoccupied
+        # one (captures Fermi-crossing band edges without an empirical eV margin),
+        # then stop. Robust to the exact εF placement at the edge.
         for n in 1:nb
             eks = (bands.eigenvalues[i][n]-εF)*Ha2eV
-            eks > 0.5 && continue   # occupied bands only (KS below εF + small margin)
             ψ = bands.ψ[i][:,n]
             Δ = 0.0
             for ff in ffs
@@ -142,6 +144,7 @@ function run(element, gridfile, outfile)
             end
             eqp = eks/(1+Δ)   # (E-εF) scaled by z_core=1/(1+Δ)
             push!(rows, (element, pids[i], t, eqp, eks, Δ))
+            eks >= 0 && break   # emitted all occupied + first unoccupied; stop
         end
     end
 
