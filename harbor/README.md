@@ -49,6 +49,13 @@ visible to the agent — so the hidden ARPES and gold never leak.
 
 ## Environment notes
 
+- **Offline verifier:** each `task.toml` sets `[verifier] network_mode =
+  "no-network"`, so the submitted `run_qp.py` runs with no internet at scoring
+  time — it cannot `git clone` the authors' `eft-psp` repo (which has the K/Mg
+  band data) or otherwise fetch the answers. DFTK works offline because the env is
+  baked at build. The `[agent]` phase keeps network (the LLM agent needs its model
+  API). NB: a per-phase network override needs a Harbor provider that supports
+  dynamic network policy (cloud providers do; plain local Docker may not).
 - DFTK is **version-pinned** via `Manifest.toml` (the gold/thresholds are
   calibrated to DFTK 0.7.25). The Dockerfile `instantiate`s it and pre-fetches
   the GTH pseudo artifact so the runtime needs no network.

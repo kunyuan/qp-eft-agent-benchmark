@@ -200,11 +200,16 @@ category = "scientific-computing"
 tags = ["physics", "dft", "dftk", "quasiparticle", "frozen-core", "julia", "{meta['tag']}"]
 
 # DFTK SCF + bands on the two hidden metals (K, Mg) take a few minutes each.
+# no-network: the submitted run_qp.py runs OFFLINE here, so it cannot fetch the
+# held-out answers online (e.g. git clone the authors' eft-psp repo). DFTK works
+# offline — the pinned env + GTH pseudo artifact are baked into the image at build.
 [verifier]
 timeout_sec = 2400.0
+network_mode = "no-network"
 
-# Generous: exploration involves repeated DFTK runs (each fresh Julia process
-# pays ~tens of seconds of load/JIT on top of the SCF).
+# The agent keeps network (it needs to reach its own model API). During the agent
+# phase only Na/Al are visible, so the concealed K/Mg answers can't be fetched;
+# and any network call its code makes will fail at verify time (no-network above).
 [agent]
 timeout_sec = 7200.0
 

@@ -52,7 +52,9 @@ to pass (the report states the KS baseline for audit).
 Anti-cheat guards (so a low RMSE means "did the physics"):
 - The runner is handed a **sanitized input directory with no `arpes_reference.csv`**
   — it cannot read the answers sitting next to the config. In the Harbor tasks it
-  also runs as an unprivileged user with the hidden/gold data root-only.
+  also runs as an unprivileged user with the hidden/gold data root-only, and the
+  **verifier runs offline** (`[verifier] network_mode = "no-network"`) so the
+  submitted code cannot fetch the answers online (e.g. the authors' `eft-psp` repo).
 - Predictions must cover **every** reference point with **exactly** the gold band
   count (occupied bands + the first unoccupied band) per k-point — flooding,
   sparse, and under-band submissions are rejected.

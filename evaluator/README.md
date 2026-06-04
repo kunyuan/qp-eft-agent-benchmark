@@ -37,7 +37,11 @@ copies the inputs to a **sanitized temp dir with no `arpes_reference.csv`**
    (~0.41–0.61 eV), so a no-physics submission FAILs. `ks_baseline_rmse_eV` reported.
 
 (The Harbor tasks add container isolation: agent code runs as `nobody` with
-`/tests/{hidden,gold}` root-only — see `harbor/`.)
+`/tests/{hidden,gold}` root-only, **and the verifier phase runs with no network**
+(`[verifier] network_mode = "no-network"`) so the runner cannot fetch the answers
+online — see `harbor/`. This local `validate_submission.py` does **not** isolate
+network by itself; run it on trusted submissions, or inside a no-network sandbox.
+The real agent-eval path is the Harbor verifier, which enforces offline.)
 
 ## Maintainer audit checklist
 

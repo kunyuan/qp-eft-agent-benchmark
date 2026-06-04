@@ -80,10 +80,18 @@ concealment is the test *set*, not the runtime name:
    config (a real hole — the agent could discover it on Na/Al at dev time). In the
    Harbor tasks the runner also runs as `nobody` with `/tests/{hidden,gold}`
    root-only.
-2. **Concealed test set + no-hardcode audit** — the solver writes generic code
+2. **Offline verifier** — the verifier phase runs with **no network**
+   (`[verifier] network_mode = "no-network"` in each `task.toml`), so the submitted
+   `run_qp.py` cannot fetch the held-out answers online (e.g. `git clone` the
+   authors' `eft-psp` repo, which has the K/Mg band data). DFTK runs offline because
+   the pinned env + GTH pseudo artifact are baked into the image at build. (The
+   *agent* phase keeps network — it needs its own model API — but sees only Na/Al,
+   and any network call its code makes fails at verify time. The override requires a
+   Harbor provider that supports dynamic network policy.)
+3. **Concealed test set + no-hardcode audit** — the solver writes generic code
    against Na/Al only; memorized per-element numbers can't enter code that must run
    on unknown metals without a forbidden per-element branch.
-3. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
+4. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
    memorized/plumbing-only submission fails.
 
 ---
