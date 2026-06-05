@@ -28,8 +28,17 @@ import sys
 import tempfile
 from pathlib import Path
 
-PASS_RMSE_EV = 0.30
-PARTIAL_RMSE_EV = 0.40
+# Per-element PASS thresholds (eV), MAINTAINER-ONLY (never shown to the agent).
+# Calibrated to the gold's hidden-set RMSE (K 0.139, Mg 0.187) + ~0.02-0.03 margin.
+# Faithful frozen-core implementations reproduce the gold to ~0.001 eV across
+# independent runs (incl. different architectures / no-web), so this margin is
+# ~10-20x the observed spread; a cruder approximation that mis-fits the band
+# k-dependence (e.g. a state-independent single-Z model) lands at ~0.19-0.22 and
+# is correctly failed. The agent is told only a physical target (~0.1 eV vs
+# eDMFT/ARPES), not this grading bar.
+PASS_THRESHOLD_EV = {"K": 0.17, "Mg": 0.21}
+DEFAULT_PASS_EV = 0.30      # fallback for an element without a calibrated bar
+PARTIAL_MARGIN_EV = 0.10    # PARTIAL spans [bar, bar + margin)
 # fraction of points allowed to exceed the gold band count before we call it flooding
 FLOOD_POINT_FRAC = 0.20
 # total predicted bands may not exceed this multiple of the gold occupied total
@@ -82,12 +91,17 @@ def read_gold(path: Path) -> tuple[dict[int, list[float]], dict[int, list[float]
     return qp, ks
 
 
-def verdict(rmse: float | None) -> str:
+def pass_threshold(element: str | None) -> float:
+    return PASS_THRESHOLD_EV.get(element, DEFAULT_PASS_EV)
+
+
+def verdict(rmse: float | None, element: str | None = None) -> str:
     if rmse is None:
         return "NO_PREDICTION"
-    if rmse < PASS_RMSE_EV:
+    bar = pass_threshold(element)
+    if rmse < bar:
         return "PASS"
-    if rmse < PARTIAL_RMSE_EV:
+    if rmse < bar + PARTIAL_MARGIN_EV:
         return "PARTIAL"
     return "FAIL"
 
@@ -109,6 +123,7 @@ def score_element(
     predictions: dict[int, list[float]],
     gold_qp: dict[int, list[float]],
     gold_ks: dict[int, list[float]],
+    element: str | None = None,
 ) -> dict[str, object]:
     n_occ = {pid: len(b) for pid, b in gold_qp.items()}
 
@@ -159,8 +174,9 @@ def score_element(
                  for pid in scored]
     rmse = _rmse(residuals)
     return {
-        "verdict": verdict(rmse),
+        "verdict": verdict(rmse, element),
         "rmse_eV": round(rmse, 6),
+        "pass_threshold_eV": pass_threshold(element),
         "mae_eV": round(sum(abs(x) for x in residuals) / len(residuals), 6),
         "mean_signed_eV": round(sum(residuals) / len(residuals), 6),
         "max_abs_error_eV": round(max(abs(x) for x in residuals), 6),
@@ -198,7 +214,7 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
             reference = read_reference(element_dir / "arpes_reference.csv")
             predictions = read_predictions(out_csv)
             gold_qp, gold_ks = read_gold(gold_dir / f"{el}_gold.csv")
-            per_element[el] = score_element(reference, predictions, gold_qp, gold_ks)
+            per_element[el] = score_element(reference, predictions, gold_qp, gold_ks, element=el)
 
     rmses = [r["rmse_eV"] for r in per_element.values()
              if isinstance(r, dict) and r.get("rmse_eV") is not None]
@@ -206,21 +222,30 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
 
     def _has(v):
         return any(isinstance(r, dict) and r.get("verdict") == v for r in per_element.values())
-    # any per-element disqualifier sinks the whole submission
+    verdicts = [r.get("verdict") for r in per_element.values() if isinstance(r, dict)]
+    # any per-element disqualifier sinks the whole submission; otherwise PASS only
+    # if EVERY element clears its own per-element bar (no averaging away a miss).
     if _has("REJECTED_FLOODING"):
         overall = "REJECTED_FLOODING"
     elif _has("INVALID_SHAPE"):
         overall = "INVALID_SHAPE"
     elif _has("NO_PREDICTION"):
         overall = "NO_PREDICTION"
+    elif verdicts and all(v == "PASS" for v in verdicts):
+        overall = "PASS"
+    elif any(v == "FAIL" for v in verdicts):
+        overall = "FAIL"
     else:
-        overall = verdict(mean_rmse)
+        overall = "PARTIAL"
     return {
         "per_element": per_element,
         "overall": {
             "mean_rmse_eV": round(mean_rmse, 6) if mean_rmse is not None else None,
             "verdict": overall,
-            "thresholds_eV": {"pass_below": PASS_RMSE_EV, "partial_below": PARTIAL_RMSE_EV},
+            "per_element_pass_thresholds_eV": {
+                el: r.get("pass_threshold_eV") for el, r in per_element.items()
+                if isinstance(r, dict) and r.get("pass_threshold_eV") is not None
+            },
         },
     }
 

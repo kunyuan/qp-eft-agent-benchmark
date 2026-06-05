@@ -93,11 +93,28 @@ band count per point, so do not emit extra bands.
   the package in Julia (`names(DFTK; all=true)`, `?<name>`, `methods(<fn>)`, or
   reading the installed source under the depot) — not from the web.
 
-## Scoring
+## Accuracy target & scoring
 
-Predictions are compared to held-out ARPES by nearest-band RMSE. You must cover
-**every** grid point with **exactly** the bands specified above (occupied + first
-unoccupied) — flooded, sparse, or wrong-count submissions are rejected. PASS <
-0.30 eV, PARTIAL 0.30-0.40, FAIL otherwise. A bare KS submission scores ~0.4-0.6
-eV and FAILs by construction. (At evaluation your runner is given inputs WITHOUT
-the held-out ARPES, so the prediction must come from the physics.)
+Your predictions are compared to held-out ARPES on the concealed metals by
+nearest-band RMSE. You must cover **every** grid point with **exactly** the bands
+specified above (occupied + first unoccupied) — flooded, sparse, or wrong-count
+submissions are rejected. At evaluation your runner is given inputs WITHOUT the
+held-out ARPES, so the prediction must come from the physics.
+
+How accurate is good enough? Bare Kohn–Sham overestimates the occupied bandwidth
+by 20–35%; a correct parameter-free frozen-core correction removes essentially all
+of that, reaching agreement with experiment at the level of the state-of-the-art
+many-body method eDMFT. For scale, Γ-point occupied-band depths (eV below E_F):
+
+| element | LDA (Mandal 2022) | eDMFT (Mandal 2022) | experiment |
+|---------|-------------------|---------------------|------------|
+| Li | 3.48 | 2.60 | — (no ARPES) |
+| Na | 3.30 | 2.84 | 2.65–2.78 |
+| Ca | 3.98 | 3.24 | 3.30 |
+
+The LDA column is a literature reference; your pinned DFTK setup reproduces it to
+within ~0.1 eV — **use your own computed KS, do not tune your setup to match these
+numbers.** Aim for agreement with experiment/eDMFT at the ~0.1 eV level (eDMFT
+itself differs from experiment by ~0.1 eV, so this is the realistic target, not an
+exact match). Self-check your method against these depths and against the full
+ARPES bands provided for Na and Al before it is run on the concealed metals.

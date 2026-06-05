@@ -20,18 +20,32 @@ def _load(el):
 def test_gold_qp_passes_for_each_hidden_element():
     for el in ("K", "Mg"):
         ref, gold_qp, gold_ks = _load(el)
-        r = V.score_element(ref, gold_qp, gold_qp, gold_ks)
+        r = V.score_element(ref, gold_qp, gold_qp, gold_ks, element=el)
         assert r["verdict"] == "PASS", (el, r)
-        assert r["rmse_eV"] < V.PASS_RMSE_EV
+        assert r["rmse_eV"] < V.pass_threshold(el)
 
 
 def test_bare_ks_fails():
     # submitting the uncorrected KS bands must NOT pass (the whole point)
     for el in ("K", "Mg"):
         ref, gold_qp, gold_ks = _load(el)
-        r = V.score_element(ref, gold_ks, gold_qp, gold_ks)
+        r = V.score_element(ref, gold_ks, gold_qp, gold_ks, element=el)
         assert r["verdict"] in ("FAIL", "PARTIAL"), (el, r)
-        assert r["rmse_eV"] >= V.PASS_RMSE_EV
+        assert r["rmse_eV"] >= V.pass_threshold(el)
+
+
+def test_tight_thresholds_separate_gold_from_crude_model():
+    # the per-element bars (K 0.17, Mg 0.21) separate faithful frozen-core impls
+    # (gold ~0.139/0.187 -> PASS) from a cruder state-independent single-Z model
+    # that mis-fits the k-dependence (~0.188/0.220 -> NOT pass, lands in PARTIAL).
+    assert V.verdict(0.139, "K") == "PASS"
+    assert V.verdict(0.187, "Mg") == "PASS"
+    assert V.verdict(0.188, "K") != "PASS"    # just over the 0.17 bar -> PARTIAL
+    assert V.verdict(0.220, "Mg") != "PASS"   # just over the 0.21 bar -> PARTIAL
+    # bare KS is clearly wrong -> FAIL
+    assert V.verdict(0.614, "K") == "FAIL" and V.verdict(0.434, "Mg") == "FAIL"
+    # an element without a calibrated bar falls back to the generic 0.30
+    assert V.verdict(0.25, "Xx") == "PASS" and V.verdict(0.41, "Xx") == "FAIL"
 
 
 def test_flooding_is_rejected():

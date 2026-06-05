@@ -59,9 +59,10 @@ visible to the agent — so the hidden ARPES and gold never leak.
 
 ## Reward
 
-`tests/test.sh` writes `1` to `/logs/verifier/reward.txt` iff the overall
-verdict is PASS (mean held-out RMSE < 0.30 eV), else `0`. (For RL-style
-continuous reward, map `score.py`'s RMSE instead of thresholding.)
+`tests/test.sh` writes `1` to `/logs/verifier/reward.txt` iff the overall verdict
+is PASS — i.e. *every* hidden element clears its tight per-element bar (`K < 0.17`,
+`Mg < 0.21` eV, calibrated to the gold), else `0`. (For RL-style continuous reward,
+map `score.py`'s RMSE instead of thresholding.)
 
 ## What is validated
 
