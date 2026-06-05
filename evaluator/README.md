@@ -33,8 +33,13 @@ copies the inputs to a **sanitized temp dir with no `arpes_reference.csv`**
    `REJECTED_FLOODING`; missing points / wrong count → `INVALID_SHAPE`. Closes the
    flooding, sparse, and under-band cheats.
 3. **Nearest-band RMSE** is then safe (n_pred = 1–4 well-separated bands).
-4. **KS-baseline gate** — thresholds (PASS < 0.30 eV) sit below what bare KS scores
-   (~0.41–0.61 eV), so a no-physics submission FAILs. `ks_baseline_rmse_eV` reported.
+4. **Tight per-element thresholds (maintainer-only)** — `PASS_THRESHOLD_EV = {"K":
+   0.17, "Mg": 0.21}`, calibrated to the gold (0.139 / 0.187) + a small margin;
+   overall PASS requires *every* hidden element to clear its own bar. These sit well
+   below the bare-KS baselines (~0.41–0.61 eV, so a no-physics submission FAILs;
+   `ks_baseline_rmse_eV` reported) and just above the gold, so a cruder approximation
+   that only roughly matches the magnitude does not pass. The agent never sees these
+   numbers — the task states a physical ~0.1 eV target instead.
 
 (The Harbor tasks add container isolation: agent code runs as `nobody` with
 `/tests/{hidden,gold}` root-only — see `harbor/`.)

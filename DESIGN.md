@@ -126,9 +126,41 @@ Fatal. The scorer (`evaluator/validate_submission.py`, mirrored in each Harbor
 - **KS-baseline gate:** a bare uncorrected-KS submission scores ~0.4–0.6 eV and
   FAILs; `ks_baseline_rmse_eV` is reported for audit. The correction is *necessary*.
 - **Sanitized inputs:** the runner never receives `arpes_reference.csv` (§3).
-- **Thresholds** (calibrated from the gold): PASS < 0.30, PARTIAL 0.30–0.40, FAIL.
-  Overall = aggregate over the hidden set; any per-element disqualifier
-  (`REJECTED_FLOODING` / `INVALID_SHAPE` / `NO_PREDICTION`) sinks the submission.
+- **Per-element thresholds (maintainer-only), overall = all-must-pass.** PASS for an
+  element iff `rmse < bar(element)`; PARTIAL within `+0.10`; else FAIL. Overall PASS
+  iff *every* hidden element clears its own bar (no averaging away a miss); any
+  disqualifier (`REJECTED_FLOODING`/`INVALID_SHAPE`/`NO_PREDICTION`) sinks it. The
+  bars are calibrated tight to the gold's hidden-set RMSE + a small margin:
+  `K < 0.17`, `Mg < 0.21` (gold 0.139 / 0.187; faithful implementations reproduce
+  the gold to ~0.001 eV across independent runs incl. no-web, so the margin is
+  ~10–20× the observed spread). Why tight: the old global 0.30 was pinned by the
+  gold's worst case **Al (0.248)** — but Al is a *dev* element, not hidden, so the
+  hidden K/Mg bar can sit right at their gold. This correctly fails a cruder
+  approximation that gets the magnitude but mis-fits the band k-dependence (e.g. a
+  state-independent single-Z model, ~0.188 / 0.220 → PARTIAL, not PASS), which a
+  loose 0.30 let through.
+
+### 4b. Accuracy target stated to the agent (no grading number revealed)
+
+The instruction does **not** state the pass bar. Instead it gives a *physical*
+target: bare KS overshoots the bandwidth by 20–35%; a correct frozen-core
+correction reaches ~0.1 eV agreement with experiment — the level of the many-body
+reference eDMFT. Public calibration anchors are given as Γ-point depths (eV):
+
+| el | LDA (Mandal '22) | eDMFT (Mandal '22) | expt |
+|----|------|-------|------|
+| Li | 3.48 | 2.60 | — |
+| Na | 3.30 | 2.84 | 2.65–2.78 |
+| Ca | 3.98 | 3.24 | 3.30 |
+
+Only **Li/Na/Ca** appear (the hidden K/Mg are never shown). Caveats baked into the
+wording: (i) the LDA column is literature — the agent uses its *own* pinned-DFTK KS
+(matches to ~0.1 eV), it must not tune to these; (ii) "match eDMFT" is framed as
+"~0.1 eV, comparable to eDMFT/experiment" — eDMFT itself is ~0.1 eV off experiment
+(for K it is *further* from ARPES than the EFT method), so it is a peer reference,
+not a higher-precision ground truth. The Γ-depth anchors pin the per-element
+*magnitude* but not the k-dependence — so they help the agent calibrate, while the
+real discriminator stays the hidden full-band RMSE with the tight per-element bars.
 
 ---
 
@@ -172,8 +204,11 @@ All four simple metals confirm the correction is **necessary and sufficient**:
 | Mg | 0.434 (FAIL) | 0.187 (PASS) | 2.3× | needs multi-band output |
 | Al | 0.414 (FAIL) | 0.248 (PASS) | 1.7× | small correction, tightest margin |
 
-**Calibrated thresholds: PASS < 0.30 eV, PARTIAL 0.30–0.40, FAIL > 0.40 eV.**
-Separates every QP from every KS; KS-baseline gate satisfied automatically.
+**Grading thresholds: tight per-element bars (hidden K < 0.17, Mg < 0.21 eV; §4).**
+These sit just above the gold's hidden-set RMSE and well below every KS baseline, so
+the KS-baseline gate is satisfied automatically and a cruder approximation that only
+roughly matches the magnitude does not pass. (The public Al case, gold 0.248, is why
+a *global* 0.30 was loose — but Al is dev, not hidden.)
 
 **Per-band before/after** (`reference/validate_bands.py`, same band assignment):
 the correction acts exactly where the physics says it should. For multi-band

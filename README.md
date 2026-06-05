@@ -45,9 +45,14 @@ python run_qp.py --element-config element_config.json --grid grid.csv --out qp_b
 python evaluator/validate_submission.py --submission-dir <dir> --level 2 --json result.json
 ```
 
-Scoring is nearest-band RMSE vs ARPES. **PASS < 0.30 eV**, PARTIAL 0.30–0.40,
-FAIL otherwise. Bare KS scores ~0.4–0.6 eV → FAIL, so the correction is necessary
-to pass (the report states the KS baseline for audit).
+Scoring is nearest-band RMSE vs held-out ARPES, with **tight per-element thresholds**
+calibrated to the gold (hidden `K < 0.17`, `Mg < 0.21` eV; gold scores 0.139 / 0.187
+and faithful implementations reproduce it to ~0.001 eV). Overall PASS requires
+*every* hidden element to clear its own bar. Bare KS scores ~0.4–0.6 eV → FAIL, so
+the correction is necessary (the report states the KS baseline for audit). The
+agent is **not** told the grading bar — the instruction states a *physical* target
+(reach ~0.1 eV agreement with experiment, the level of the many-body reference
+eDMFT) with public Li/Na/Ca LDA/eDMFT/experiment anchors to calibrate against.
 
 Anti-cheat guards (so a low RMSE means "did the physics"):
 - The runner is handed a **sanitized input directory with no `arpes_reference.csv`**
