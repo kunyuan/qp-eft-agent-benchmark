@@ -83,7 +83,30 @@ concealment is the test *set*, not the runtime name:
 2. **Concealed test set + no-hardcode audit** — the solver writes generic code
    against Na/Al only; memorized per-element numbers can't enter code that must run
    on unknown metals without a forbidden per-element branch.
-3. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
+3. **No network / no external lookup** — two instruction rules: (a) `run_qp.py`
+   must not reach the network at run time (compute from local inputs + DFTK,
+   offline); (b) the agent must not consult **any** external source while solving —
+   no web search of any kind: not the underlying paper / derivation / answers / the
+   `eft-psp` repo, and **not even library/API documentation**. (b) matters most for
+   **L3** (the public paper would hand over the derivation), but applies throughout.
+   This is solvable without web because DFTK is installed locally — the intended way
+   to learn its API (e.g. `ExplicitKpoints`, `Gplusk_vectors_cart`) is Julia
+   introspection of the installed package (`names`, `?`, `methods`, source), not the
+   web. (Reflects how the reference solution was found.)
+   - **Enforcement (rule → control):** these are rules by default. To enforce:
+     run the verifier offline (Harbor `[verifier] network_mode = "no-network"`, or
+     a `--network none` sandbox), and restrict the *agent* phase to an allowlist of
+     only its model-API host (Harbor `[agent] network_mode = "allowlist"`) or run it
+     with no web tools. Both are provider/harness-dependent and **not** set by
+     default (a per-phase network override needs a provider with dynamic policy,
+     e.g. E2B).
+   - **Residual limit (cannot be controlled):** the paper is public and likely in
+     the agent's *training data*, so a strong model could recall the closed-form
+     `z_core` even fully offline. Network controls stop *live* lookup, not memory.
+     This is intrinsic to **L3** (derive a published result); L1/L2 are unaffected
+     (the formula is given there, and the hidden answers are per-point band data
+     that can't be memorized precisely and aren't known to be the test set).
+4. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
    memorized/plumbing-only submission fails.
 
 ---
