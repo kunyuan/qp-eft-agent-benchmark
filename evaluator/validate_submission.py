@@ -9,9 +9,10 @@ make "low RMSE" actually mean "did the frozen-core physics":
    trivial is REJECTED (this was the fatal exploit in the original scorer).
 2. Nearest-band matching is then safe: with n_pred ~= n_occ (1-3 bands), there is
    nothing to flood.
-3. KS-baseline gate — calibrated thresholds (PASS<0.30 eV) sit below what bare
+3. KS-baseline gate — calibrated per-element thresholds sit below what bare
    uncorrected KS scores (~0.41-0.61 eV), so a no-physics submission FAILs. The
-   report also states what KS-only would have scored, for audit.
+   report also states what KS-only would have scored, for audit. Overall PASS
+   requires every hidden element to clear its own calibrated bar.
 
 Thresholds calibrated from the gold reference vs real ARPES (see DESIGN.md §5b).
 """
