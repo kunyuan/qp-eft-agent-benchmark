@@ -1,0 +1,27 @@
+{
+  "element": "Ca",
+  "core_s_channels": [
+    {
+      "channel": "1s",
+      "DeltaE_c_Ha": 148.1951819931,
+      "atomic_core_file": "atomic_core_1s.csv"
+    },
+    {
+      "channel": "2s",
+      "DeltaE_c_Ha": 16.2710496813,
+      "atomic_core_file": "atomic_core_2s.csv"
+    },
+    {
+      "channel": "3s",
+      "DeltaE_c_Ha": 2.5070829819,
+      "atomic_core_file": "atomic_core_3s.csv"
+    }
+  ],
+  "atomic_data_columns": {
+    "atomic_core_*.csv": [
+      "r_bohr",
+      "u_c",
+      "V_H_c"
+    ]
+  }
+}
