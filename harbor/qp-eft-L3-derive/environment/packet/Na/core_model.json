@@ -15,9 +15,8 @@
   "atomic_data_columns": {
     "atomic_core_*.csv": [
       "r_bohr",
-      "u_c",
-      "V_H_c"
+      "u_c"
     ]
   },
-  "atomic_data_note": "u_c(r)=r*R_c(r) normalized so integral u_c^2 dr = 1; V_H_c is the single-core-orbital Hartree potential."
+  "atomic_data_note": "u_c(r)=r*R_c(r) normalized so integral u_c^2 dr = 1."
 }
