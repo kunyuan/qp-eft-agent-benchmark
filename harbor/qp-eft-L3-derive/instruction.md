@@ -136,78 +136,89 @@ ARPES bands provided for Na and Al before it is run on the concealed metals.
 
 # Physical setup (Level 3)
 
-## The puzzle
+## The puzzle and the goal
 
-For decades, angle-resolved photoemission (ARPES) on the simple alkali metals
-posed a puzzle: the measured occupied bandwidth is 20-35% NARROWER than the
-free-electron / local-density (LDA) prediction (only a few % for Al). The
-discrepancy resisted the usual fixes — a comprehensive study (Mandal et al.) found
-that G0W0, hybrid functionals, and meta-GGA all fail to reproduce the ARPES
-bandwidths; only embedded dynamical mean-field theory (LDA+eDMFT), which keeps the
-full frequency dependence of the self-energy, achieves quantitative agreement. The
-missing physics is therefore DYNAMICAL — and, as the rest of this setup makes
-precise, it lives in the core.
+For the simple metals, Kohn-Sham LDA overestimates the occupied bandwidth seen in
+ARPES by 20-35% (alkali) down to a few % (Al). Ordinary DFT functionals (LDA, GGA,
+hybrids, G0W0) do not fix it; only a full many-body treatment (eDMFT) reproduces the
+measured bandwidths. The missing physics is therefore a DYNAMICAL effect of the core
+electrons. Your goal: DERIVE, from first principles, the parameter-free correction
+that captures it — reaching eDMFT / experiment-level accuracy — and predict the
+band energies.
 
-Your task is to DERIVE, from first principles, the leading parameter-free
-correction that produces this narrowing, then implement it and predict the band
-energies.
+## The quasiparticle propagator (the result you are reproducing)
 
-## What is already understood: the valence quasiparticle (given)
+This effective theory rests on (i) the scale separation between the core excitation
+energies and the valence Fermi energy (which lets the core be integrated out), and
+(ii) the locality of the interacting uniform electron gas at metallic densities
+(established by high-order diagrammatic Monte Carlo), which dictates how many-body
+effects are absorbed into renormalized parameters. The tree-level quasiparticle
+propagator of the EFT is
 
-The valence side is not in doubt. For an inhomogeneous electron gas — electrons
-interacting through their Coulomb repulsion in a fixed external one-body potential
-— accurate many-body calculation confirms, as a high-precision result you may take
-as given, that in the Fermi region (occupied states, at and below the Fermi level)
-the single-particle Green's function is a sharp coherent quasiparticle,
+    G_{nu,k}^{-1}(i omega)  ~=  (z_val)^{-1} [ (z_core_{nu,k})^{-1} i omega
+                                              - ( eps_KS_{nu,k} - eps_F ) ]      (1)
 
-    G(iw_n)  ~=  z / (i w_n  -  H_KS) ,
+where the dispersion is governed by the eigenvalues `eps_KS_{nu,k}` of the
+Kohn-Sham Hamiltonian
 
-with the dispersion set by an effective single-particle (Kohn-Sham) Hamiltonian
-`H_KS` and a quasiparticle weight `z`. (This is why ARPES sees sharp peaks and why
-KS eigenvalues are nearly the quasiparticle energies.)
+    H_KS  =  -1/2 nabla^2  +  V_PSP  +  V_H[n]  +  V_xc[n]      (V_PSP: GTH large-core),
 
-## Where the puzzle lives: the core (the catch)
+`z_val` is the valence quasiparticle residue (an overall prefactor that does NOT
+shift the pole), and `z_core_{nu,k}` is the frozen-core renormalization, which
+rescales the frequency relative to the dispersion — an effective time dilation from
+virtual core excitations. Locating the pole gives the energy ARPES measures,
 
-A real metal is NOT an inhomogeneous electron gas — besides the valence electrons
-it has CORE electrons, and the rigorous starting point is the ALL-ELECTRON
-Hamiltonian. A conventional (frozen-core) pseudopotential integrates the core out
-STATICALLY: it keeps the static core-valence physics but discards the frequency
-dependence — exactly the dynamical effect eDMFT showed is needed. (Bolting a
-separate many-body correction onto a pseudopotential instead double-counts the
-core, which was already integrated out implicitly — so derive it from one
-consistent reduction.)
+    eps_QP_{nu,k}  ~=  eps_F  +  z_core_{nu,k} ( eps_KS_{nu,k} - eps_F ).      (2)
 
-So treat the core correctly. Starting from the all-electron Hamiltonian, integrate
-the core electrons out. The reduction has
+Your DFTK run gives `eps_KS_{nu,k}` and `eps_F`. What is NOT given is
+`z_core_{nu,k}` — deriving its closed form is the task.
 
-- a STATIC part = the conventional pseudopotential your DFTK run already uses (so
-  `H_KS` and the bands you compute ARE that static reduction); and
-- a DYNAMICAL part = the core's frequency-dependent response — a valence electron
-  virtually excites a core particle-hole pair (energy `DeltaE_c`) and the core
-  relaxes back — absent from any static pseudopotential.
+## How to derive the effective valence action
 
-## The task
+The rigorous starting point is the ALL-ELECTRON action — valence AND core electrons
+in the lattice potential, with the full Coulomb interaction,
 
-Derive that dynamical part from first principles — it is the leading
-(second-order) core-induced contribution, with the core response controlled by
-`DeltaE_c` — then derive its consequence for the quasiparticle band energies
-(relative to the Fermi level). Do NOT assume the mechanism: whether the dynamical
-term renormalizes the weight `z`, shifts the energies, or something else; how it
-combines with the coherent `G` above; how large the effect is; and whether it acts
-identically on every Bloch state — are all for you to work out from the
-derivation, not to posit. One simplification is controlled: `DeltaE_c` is several
-Hartree, far above the valence Fermi energy, so the core excitations are
-high-energy modes you may integrate out by closure at the single scale `DeltaE_c`.
+    L = int_{r,sigma} bar_psi_{r,sigma} [ d_tau - nabla^2/2 + V_Lat - mu ] psi_{r,sigma}
+        + (1/2) int_{r,r'} ( bar_psi_{r,sigma} bar_psi_{r',sigma'}
+                              psi_{r',sigma'} psi_{r,sigma} ) / |r - r'| .
+
+INTEGRATE THE CORE FIELDS OUT of the path integral to obtain an effective action for
+the valence electrons alone. (A clean route: pass to a reference in which the valence
+orbitals are frozen — pushed to high energy by a hybridization — so the core is
+solved in that reference and the valence then propagates in the potential the core
+leaves behind.) The result is a valence propagator
+
+    g_v^{-1}  =  g_0^{-1}  +  delta_V_pp ,        g_0^{-1} = i omega - H_0,
+                                                  H_0 = -nabla^2/2 + V_Lat - mu,
+
+where `delta_V_pp` is the pseudopotential induced by the core. It has
+- a STATIC (energy-independent) part: the conventional frozen-core pseudopotential
+  `V_PSP` already inside `H_KS` — this sets the dispersion `eps_KS` in Eq. (1);
+- a DYNAMICAL (frequency-dependent) part: this is the `z_core` renormalization in
+  Eq. (1), and it is the leading thing static pseudopotentials omit.
+
+Re-adding the static part would double-count the core; the correction is the
+dynamical part only. Derive it — and hence `z_core_{nu,k}` and, through Eq. (2), the
+band energies (relative to E_F) and the bandwidth.
+
+One simplification is controlled: the core excitation energies `DeltaE_c` are several
+Hartree, far above the valence Fermi energy, so treat the core excitations by closure
+at the single scale `DeltaE_c`, and — since they dominate — keep only the core
+s-shell (monopole) channels.
+
+Do not posit the form of `z_core_{nu,k}`: what it is built from out of the core data,
+and how it depends on the Bloch state, are for you to derive.
 
 ## What you have
 
-Per core s-channel `c`: the all-electron radial core orbital `u_c(r)` and its
-single-orbital Hartree potential `V_H_c(r)` (`atomic_core_<c>.csv`), and the core
-excitation energy `DeltaE_c` (`core_model.json`). From your DFTK calculation: the
-KS eigenvalues, the Fermi level, and the plane-wave coefficients `c_nk(G)` of
-each Bloch state (`|k+G|` is the Cartesian length in Bohr^-1).
+Per core s-channel `c`: the all-electron radial core orbital `u_c(r)`
+(`atomic_core_<c>.csv`, normalized int u_c^2 dr = 1) and its excitation energy
+`DeltaE_c` (`core_model.json`). From your DFTK run: the KS eigenvalues, E_F, and the
+plane-wave coefficients `c_nk(G)` of each Bloch state (`|k+G|` in Bohr^-1). Anything
+else your derivation needs — potentials, integrals — you build from these.
 
-Your correction must be parameter-free (no fitted constant, no fit to ARPES) and
-use the same code path for every element. It is graded on held-out metals whose
-core structure differs from the public Na/Al — matching Na/Al is necessary but
-NOT sufficient, so a form tuned to those two will not generalize.
+Parameter-free: no fitted constant (the correct prefactor is exactly 1). If you need
+to tune a constant to match the public elements, your derivation is incomplete —
+re-derive, do not fit. The same code path runs on every element; it is graded on
+held-out metals whose core structure differs from the public Na/Al, so matching
+Na/Al is necessary but not sufficient.
