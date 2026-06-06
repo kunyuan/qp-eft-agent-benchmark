@@ -1,0 +1,62 @@
+{
+  "element": "Ca",
+  "Z_nuclear": 20,
+  "structure": {
+    "bravais": "fcc",
+    "a_bohr": 10.545,
+    "lattice_vectors_bohr": [
+      [
+        0,
+        5.2725,
+        5.2725
+      ],
+      [
+        5.2725,
+        0,
+        5.2725
+      ],
+      [
+        5.2725,
+        5.2725,
+        0
+      ]
+    ],
+    "atom_positions_frac": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "path": {
+      "from": "Gamma",
+      "to": "X",
+      "endpoint_frac": [
+        0.5,
+        0.0,
+        0.5
+      ]
+    }
+  },
+  "dft": {
+    "xc": "LDA",
+    "pseudopotential_family": "cp2k.nc.sr.lda.v0_1.largecore.gth",
+    "z_valence": 2,
+    "ecut_Ha": 20.0,
+    "kgrid": [
+      8,
+      8,
+      8
+    ],
+    "smearing_Ha": 0.001
+  },
+  "frozen_core": {
+    "core_s_channels": [
+      "1s",
+      "2s",
+      "3s"
+    ],
+    "valence": "4s2",
+    "core_model_file": "core_model.json"
+  }
+}
