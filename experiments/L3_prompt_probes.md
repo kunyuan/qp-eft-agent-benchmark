@@ -100,6 +100,18 @@ over-correcting linearisation roughly cancel — see `L3_clean2/REPORT.md §2`).
 new prompt removes that coincidence and exposes the real error: *the coupling is
 `J_c`, and it should be the `(V_H_c − J_c)` form factor.*
 
+Root cause, in one line: neither new-prompt agent actually **performs** the
+integrate-out — both restate the given `g_v⁻¹ = g_0⁻¹ + δV_pp`, fit a textbook
+self-energy form to it ("particle hybridising with a level" / "standard polaron"),
+and **guess the coupling by dimensional analysis** (`U_c` = "the only Coulomb energy
+one can form from `u_c`"). The valence–core Coulomb matrix element, the `c→c'`
+transition density, and the closure — the steps that actually produce
+`(V_H_c − J_c)` — are never written. In response, `SETUP_L3` now **requires** a
+step-by-step integrate-out of the core from the many-electron action (the coupling
+is whatever the integral yields, not a posited/dimensional one) and **flags
+exchange** (valence–core antisymmetry shapes the dynamical coupling; a purely direct
+density-response picture misses it).
+
 ## Conclusion for the benchmark
 
 - **0/14 is the right frontier signal.** The barrier is a single, well-defined
