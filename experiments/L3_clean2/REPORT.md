@@ -24,6 +24,9 @@ comparison (generated with the gold atomic solver): [`ca_case/`](ca_case/).
   **`z = 1 − λ`, `λ = Σ_c ⟨u_c² V_H_c⟩ / ΔE_c²`**, and `E_QP − E_F = z·(E_KS − E_F)`.
 - **It is a single `z` per element (k-independent).** clean2 argues this from
   "high-energy on-site core fluctuation → local self-energy → the eDMFT picture."
+- **`J_c` is not a controlled reduction of the gold's `f_c`** — its coupling is
+  ~1.6× too weak; the accuracy comes from a *coincidental cancellation* against the
+  `z = 1−λ` linearization (§2), with the largest residual on K (where it fails).
 - **On the Γ-depth (occupied bandwidth) it is excellent** — mean |deviation from
   ARPES| **0.09 eV** across Na/Al/K/Ca/Mg, vs **0.14** for the published EFT (gold)
   and **0.10** for eDMFT. It is the *best of the three* on bandwidth.
@@ -74,7 +77,63 @@ branch. (This is the `J_c/ΔE_c²` family; cf. old probe r6.)
 
 ---
 
-## 2. Results
+## 2. Why `J_c` still lands accurate — a coincidental cancellation
+
+A natural worry: clean2's coupling `J_c = ∫u_c² V_H_c` is **not** the gold's
+coupling. In the form factor `f_c(K)=√(4π)/K∫u_c(V_H_c−J_c)sin(Kr)dr`, the coupling
+is the **fluctuation** `(V_H_c − J_c)`; `J_c` is the constant **subtracted** to make
+that fluctuation zero-mean (`∫u_c²(V_H_c−J_c)=0`). clean2 uses the *subtracted
+constant itself* as the coupling. So how does it land within ~0.1 eV of the gold?
+Two errors that partially cancel.
+
+**(i) The coupling really is weaker — by ~1.6×, not 2×.** Compare `J_c` to the
+gold's *band-bottom* effective coupling `|F_c(Γ)|² = (1/z_gold − 1)·ΔE_c²` — **not**
+to `f_c(0)²` (the K→0 maximum, which over-states it, because the band-bottom Bloch
+state is not a pure plane wave, `c_Γ(0)² ≈ 0.86`):
+
+| el (dom ch) | gold band-bottom coupling | `f_c(0)²` | **`J_c`** | `J_c` / gold |
+|-------------|--------------------------:|----------:|----------:|-------------:|
+| Na 2s | 1.81 | 2.10 | 1.15 | 0.63 |
+| K 3s  | 1.54 | 1.71 | 0.70 | 0.46 |
+| Ca 3s | 1.32 | 1.41 | 0.77 | 0.58 |
+| Mg 2s | 1.60 | 1.68 | 1.29 | 0.81 |
+
+So `J_c` is **46–81 %** of the real coupling (mean ~0.6). (My first pass wrongly
+compared `J_c` to `f_c(0)²` and quoted "~2×"; the band-bottom value is the right
+reference.)
+
+**(ii) A second error over-corrects and cancels most of it.** clean2's `z = 1 − λ`
+is a *linearization* of `z = 1/(1+λ)`. For any `λ > 0`, `1 − λ < 1/(1+λ)`, so the
+linearization **over-corrects** (narrows more than the true weight for the same
+coupling). The weaker coupling pushes `z` up (under-correct); the linearization
+pushes it down (over-correct); they partly cancel:
+
+| el | gold z | clean2 `z = 1−λ` | if it used `1/(1+λ)` | residual |
+|----|-------:|-----------------:|---------------------:|---------:|
+| Na | 0.801 | 0.838 | 0.861 | +0.037 |
+| K  | 0.657 | 0.748 | 0.799 | +0.091 |
+| Ca | 0.826 | 0.868 | 0.883 | +0.042 |
+| Mg | 0.912 | 0.919 | 0.925 | +0.007 |
+
+Read the "`1/(1+λ)`" column as the weak coupling showing through (Na would be 0.861,
+well above gold 0.801 — under-corrected); the `1 − λ` linearization pulls it back.
+The two roughly cancel, leaving a small **net under-correction** (+0.007 … +0.091).
+
+**The residual is largest for K** (+0.091): K's `J_c` is the most deficient (46 %)
+*and* its `λ` is the largest (0.25), so the linearization helps but cannot fully
+close the gap — which is exactly why K is clean2's worst element (RMSE 0.190, the
+one furthest over its bar).
+
+**So clean2's accuracy is not a controlled reduction of the gold.** `J_c` is not
+`f_c`; the agreement comes from a fortunate cancellation of a ~1.6× weak coupling
+against a linearization that over-corrects by a similar amount, with the `1/ΔE_c²`
+factor carrying the dominant element trend. A *correct* single-`z` reduction would
+evaluate the real `(V_H_c − J_c)` form factor at the band-bottom momenta — one
+number per element, but the right one — not substitute `J_c`.
+
+---
+
+## 3. Results
 
 ### Full-band RMSE vs ARPES (the benchmark metric)
 
@@ -120,7 +179,7 @@ under-corrects). Mg is its one weak point.
 
 ---
 
-## 3. The finding: bandwidth ≠ band
+## 4. The finding: bandwidth ≠ band
 
 clean2 is a near-perfect illustration of why the benchmark scores the **full ARPES
 band**, not a single bandwidth number:
@@ -141,7 +200,7 @@ fails here unless it carries the state-resolved form factor.
 
 ---
 
-## 4. Reproduction
+## 5. Reproduction
 
 From the repo root, with Julia + the pinned project (`environment/`):
 
