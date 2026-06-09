@@ -361,6 +361,17 @@ Re-adding the static part would double-count the core; the correction is the
 dynamical part only. Derive it — and hence `z_core_{nu,k}` and, through Eq. (2), the
 band energies (relative to E_F) and the bandwidth.
 
+Do this as a real derivation, not a model: start from the many-electron action and
+integrate the core fields out STEP BY STEP to obtain `δV_pp` — and in particular its
+dynamical (frequency-dependent) term — from the valence–core Coulomb interaction
+itself. The coupling that enters `z_core` is whatever this integral yields; do not
+posit a model self-energy or fix the coupling by dimensional analysis.
+
+Be careful with EXCHANGE: valence and core electrons are antisymmetric, so `δV_pp`
+carries a Fock/exchange contribution alongside the direct (Hartree) one, and the
+antisymmetry shapes the dynamical coupling — a purely direct density-response
+picture misses it.
+
 One simplification is controlled: the core excitation energies `DeltaE_c` are several
 Hartree, far above the valence Fermi energy, so treat the core excitations by closure
 at the single scale `DeltaE_c`, and — since they dominate — keep only the core
