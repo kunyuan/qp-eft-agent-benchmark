@@ -52,6 +52,17 @@ copies the inputs to a **sanitized temp dir with no `arpes_reference.csv`**
 - `method.md` (required by the submission spec) describes a parameter-free
   correction, not a fit; for Level 3 it should show the derivation.
 - Low RMSE + a hidden-element hardcode = invalid.
+- **Vertex diagonal check (Level 3).** From the submission's derived per-channel
+  coupling potential `V_vertex(r)`, compute `∫ u_c(r)² V_vertex(r) dr`. The
+  consistent value is **0**: the dynamical vertex must be a zero-mean fluctuation
+  against the core orbital — its static mean is already counted in `DeltaE_c`
+  and in the PSP, so a large nonzero diagonal means the coupling double-counts
+  the static sector (and was typically locked in by numerical coincidence on the
+  public elements rather than derived). One-line classifier over observed
+  failure modes: gold `(V_H_c − J_c)` → 0; `J_c`-as-coupling → `J_c ≠ 0`;
+  bare-nuclear `Z/r` → `Z⟨1/r⟩_c`, huge. See
+  `experiments/L3_fable5/REPORT.md` and
+  `maintainer_sources/NOTE-vertex-derivation-Li.md` (§7).
 
 ## Tests
 

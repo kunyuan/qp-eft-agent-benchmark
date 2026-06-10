@@ -111,7 +111,11 @@ def copy_level_data(el: str, level: int, dst: Path):
         else:
             entry["atomic_core_file"] = f"atomic_core_{c['channel']}.csv"
         chans.append(entry)
-    cm = {"element": el, "core_s_channels": chans}
+    cm = {"element": el, "core_s_channels": chans,
+          "DeltaE_c_note": ("DeltaE_c_Ha is the full interacting-core excitation "
+                            "energy E_core(hole in c) - E_core(ground state), a "
+                            "many-electron total-energy difference -- NOT a bare "
+                            "orbital-eigenvalue difference.")}
     if level == 2:
         # L2 gives the f_c formula explicitly, and that formula uses V_H_c.
         cm["atomic_data_columns"] = {"atomic_core_*.csv": ["r_bohr", "u_c", "V_H_c"]}
@@ -384,7 +388,11 @@ and how it depends on the Bloch state, are for you to derive.
 
 Per core s-channel `c`: the all-electron radial core orbital `u_c(r)`
 (`atomic_core_<c>.csv`, normalized int u_c^2 dr = 1) and its excitation energy
-`DeltaE_c` (`core_model.json`). From your DFTK run: the KS eigenvalues, E_F, and the
+`DeltaE_c` (`core_model.json`). `DeltaE_c` is the full many-electron excitation
+energy of the interacting core — the total-energy difference
+E_core(hole in c) − E_core(ground state) — NOT a bare orbital-eigenvalue
+difference; keep your coupling and your energy denominators consistent with this
+definition. From your DFTK run: the KS eigenvalues, E_F, and the
 plane-wave coefficients `c_nk(G)` of each Bloch state (`|k+G|` in Bohr^-1). Anything
 else your derivation needs — potentials, integrals — you build from these.
 
@@ -393,6 +401,19 @@ to tune a constant to match the public elements, your derivation is incomplete �
 re-derive, do not fit. The same code path runs on every element; it is graded on
 held-out metals whose core structure differs from the public Na/Al, so matching
 Na/Al is necessary but not sufficient.
+
+Your derivation must remain valid across core-shell types — shells both tighter
+and more diffuse than the public elements' (e.g. n = 3 s-channels of much larger
+radial extent): the shell- and Z-dependence of the coupling must come out of the
+derivation, not be calibrated on the tight cores of the development set.
+
+Derive first, evaluate second. Do not use public-element magnitudes to SELECT
+between candidate couplings: entire families of incorrect vertices are nearly
+degenerate on Na/Al, so numerical agreement there can never substitute for the
+derivation. Conversely, a correctly derived coupling can appear wrong by a large
+factor if your Bloch-state contraction conventions are inconsistent — if the
+magnitude looks off, audit the conventions end-to-end against the public ARPES
+before abandoning the derivation.
 """
 
 LEVEL_DOCS = {
