@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""Self-contained verifier scorer (mirrors evaluator/validate_submission.py).
+
+Reads predictions already produced by test.sh, scores them against the hidden
+ARPES with the flooding guard + KS-baseline gate, writes result.json, and exits
+0 iff overall verdict is PASS.
+
+  score.py --pred-dir <dir> --hidden <dir> --gold <dir> --json <out.json>
+"""
+from __future__ import annotations
+import argparse, csv, json, math
+from pathlib import Path
+
+# Per-element PASS thresholds (eV), calibrated to the gold's hidden-set RMSE
+# (K 0.139, Mg 0.187) + ~0.02-0.03 margin. Faithful frozen-core implementations
+# reproduce the gold to ~0.001 eV; a cruder approximation (e.g. a state-independent
+# single-Z model) lands at ~0.19-0.22 and is correctly failed.
+PASS_THRESHOLD_EV = {"K": 0.17, "Mg": 0.21}
+DEFAULT_PASS_EV = 0.30
+PARTIAL_MARGIN_EV = 0.10
+FLOOD_POINT_FRAC = 0.20
+FLOOD_TOTAL_RATIO = 1.5
+
+
+def read_reference(path: Path):
+    with path.open(newline="") as f:
+        return {int(r["point_id"]): float(r["E_expt_eV"]) for r in csv.DictReader(f)}
+
+
+def read_predictions(path: Path):
+    out = {}
+    if not path.exists():
+        return out
+    with path.open(newline="") as f:
+        rows = csv.DictReader(f)
+        if rows.fieldnames is None or "point_id" not in rows.fieldnames \
+                or "E_pred_eV" not in rows.fieldnames:
+            return out
+        for r in rows:
+            v = (r.get("E_pred_eV") or "").strip()
+            if v:
+                out.setdefault(int(r["point_id"]), []).append(float(v))
+    return out
+
+
+def read_gold(path: Path):
+    qp, ks = {}, {}
+    with path.open(newline="") as f:
+        for r in csv.DictReader(f):
+            pid = int(r["point_id"])
+            qp.setdefault(pid, []).append(float(r["E_pred_eV"]))
+            ks.setdefault(pid, []).append(float(r["E_KS_eV"]))
+    return qp, ks
+
+
+def pass_threshold(element):
+    return PASS_THRESHOLD_EV.get(element, DEFAULT_PASS_EV)
+
+
+def verdict(rmse, element=None):
+    if rmse is None:
+        return "NO_PREDICTION"
+    bar = pass_threshold(element)
+    if rmse < bar:
+        return "PASS"
+    if rmse < bar + PARTIAL_MARGIN_EV:
+        return "PARTIAL"
+    return "FAIL"
+
+
+def _rmse(a):
+    return math.sqrt(sum(x * x for x in a) / len(a))
+
+
+def _nearest_rmse(ref, bands):
+    res = [min(bands[p], key=lambda v: abs(v - ref[p])) - ref[p]
+           for p in ref if p in bands and bands[p]]
+    return _rmse(res) if res else None
+
+
+def score_element(ref, pred, gold_qp, gold_ks, element=None):
+    n_occ = {p: len(b) for p, b in gold_qp.items()}
+    over = [p for p, b in pred.items() if len(b) > n_occ.get(p, 1) + 1]
+    total_pred = sum(len(b) for b in pred.values())
+    total_gold = sum(n_occ.values()) or 1
+    if len(over) > FLOOD_POINT_FRAC * max(len(pred), 1) or total_pred > FLOOD_TOTAL_RATIO * total_gold:
+        return {"verdict": "REJECTED_FLOODING", "rmse_eV": None,
+                "n_points_over_band_cap": len(over), "total_predicted_bands": total_pred,
+                "total_gold_bands": total_gold}
+    scored = sorted(set(ref) & set(pred))
+    missing = sorted(set(ref) - set(pred))
+    band_mismatch = {p: {"expected": n_occ.get(p, 0), "got": len(pred[p])}
+                     for p in ref if p in pred and len(pred[p]) != n_occ.get(p, 0)}
+    if missing or band_mismatch:
+        return {"verdict": "INVALID_SHAPE", "rmse_eV": None, "n_scored": len(scored),
+                "n_missing": len(missing), "n_band_count_mismatches": len(band_mismatch),
+                "note": "every reference point must be predicted with exactly the gold band count"}
+    if not scored:
+        return {"verdict": "NO_PREDICTION", "rmse_eV": None, "n_scored": 0}
+    res = [min(pred[p], key=lambda v: abs(v - ref[p])) - ref[p] for p in scored]
+    rmse = _rmse(res)
+    return {"verdict": verdict(rmse, element), "rmse_eV": round(rmse, 6),
+            "pass_threshold_eV": pass_threshold(element),
+            "mean_signed_eV": round(sum(res) / len(res), 6),
+            "n_scored": len(scored), "n_missing": len(set(ref) - set(pred)),
+            "n_points_over_band_cap": len(over),
+            "ks_baseline_rmse_eV": round(r, 6) if (r := _nearest_rmse(ref, gold_ks)) else None}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pred-dir", required=True, type=Path)
+    ap.add_argument("--hidden", required=True, type=Path)
+    ap.add_argument("--gold", required=True, type=Path)
+    ap.add_argument("--json", type=Path)
+    a = ap.parse_args()
+
+    per = {}
+    for eldir in sorted(p for p in a.hidden.iterdir() if p.is_dir()):
+        el = eldir.name
+        ref = read_reference(eldir / "arpes_reference.csv")
+        pred = read_predictions(a.pred_dir / f"{el}_out.csv")
+        gqp, gks = read_gold(a.gold / f"{el}_gold.csv")
+        per[el] = score_element(ref, pred, gqp, gks, element=el)
+
+    rmses = [r["rmse_eV"] for r in per.values() if r.get("rmse_eV") is not None]
+    mean = sum(rmses) / len(rmses) if rmses else None
+    has = lambda v: any(r.get("verdict") == v for r in per.values())
+    verdicts = [r.get("verdict") for r in per.values()]
+    if has("REJECTED_FLOODING"):
+        overall = "REJECTED_FLOODING"
+    elif has("INVALID_SHAPE"):
+        overall = "INVALID_SHAPE"
+    elif has("NO_PREDICTION"):
+        overall = "NO_PREDICTION"
+    elif verdicts and all(v == "PASS" for v in verdicts):
+        overall = "PASS"
+    elif any(v == "FAIL" for v in verdicts):
+        overall = "FAIL"
+    else:
+        overall = "PARTIAL"
+    result = {"per_element": per,
+              "overall": {"mean_rmse_eV": round(mean, 6) if mean is not None else None,
+                          "verdict": overall,
+                          "per_element_pass_thresholds_eV": {
+                              el: r.get("pass_threshold_eV") for el, r in per.items()
+                              if r.get("pass_threshold_eV") is not None}}}
+    text = json.dumps(result, indent=2, sort_keys=True)
+    print(text)
+    if a.json:
+        a.json.write_text(text + "\n")
+    return 0 if overall == "PASS" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

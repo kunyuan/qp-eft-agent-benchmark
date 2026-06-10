@@ -21,12 +21,13 @@ formula (at the harder levels) and grade the predictions.
 | **L1** | full `z_core` formula + precomputed `f_c(K)` tables | — | DFTK wiring, applying the correction, generalization |
 | **L2** | the formula; atomic core data (`u_c`, `V_H_c`) | the form factors | implementing the form-factor quadrature |
 | **L3** | only the physical setup + atomic core data | the formula | deriving `z_core` from the EFT |
+| **L4** | only the problem + public ARPES | the formula AND all atomic data; no prescribed approximations | open frontier: own atomic solver, declared/controlled approximations, match or **beat** the published leading order |
 
 All levels are scored identically against held-out ARPES.
 
 ## What the agent gets vs what is hidden
 
-- **Agent-facing:** `agent_packet/` — README + `levels/L{1,2,3}/` with the public
+- **Agent-facing:** `agent_packet/` — README + `levels/L{1,2,3,4}/` with the public
   development elements **Na, Al** (config, grid, ARPES, level data) and the task
   + theory/setup docs. Hand the agent ONE level's directory.
 - **Hidden (maintainer-only):** `evaluator/` — held-out metals **K, Mg** per
@@ -67,7 +68,7 @@ Anti-cheat guards (so a low RMSE means "did the physics"):
 ## Run as a Harbor task (containerized agent harness)
 
 Each level is also packaged as a [Harbor](https://github.com/harbor-framework/harbor)
-task under `harbor/qp-eft-L{1,2,3}-*/` — a pinned container (Julia + DFTK), the
+task under `harbor/qp-eft-L{1,2,3,4}-*/` — a pinned container (Julia + DFTK), the
 oracle, and the verifier (see `harbor/README.md`):
 
 ```bash
@@ -97,13 +98,13 @@ provenance.
 ## Layout
 
 ```text
-agent_packet/levels/L{1,2,3}/{Na,Al}/   agent-facing packets (one level per run)
+agent_packet/levels/L{1,2,3,4}/{Na,Al}/ agent-facing packets (one level per run)
 evaluator/
-  hidden/L{1,2,3}/{K,Mg}/               held-out metals (config+grid+data+ARPES)
+  hidden/L{1,2,3,4}/{K,Mg}/             held-out metals (config+grid+data+ARPES)
   gold/                                 gold band references (occupied + first unoccupied)
   source_data/                          raw grids+ARPES (maintainer source)
   validate_submission.py                scorer (--level; sanitizes inputs, anti-cheat guards)
-harbor/qp-eft-L{1,2,3}-*/               the three levels as Harbor tasks (env/oracle/verifier)
+harbor/qp-eft-L{1,2,3,4}-*/             the four levels as Harbor tasks (env/oracle/verifier)
 reference/                              gold solution, atomic solver, generators
 environment/                            pinned Julia project (DFTK 0.7.25)
 ```
@@ -113,5 +114,5 @@ environment/                            pinned Julia project (DFTK 0.7.25)
 ```bash
 julia --project=environment reference/gen_packet_data.jl   # atomic data + f_c tables
 python3 reference/build_packet.py                          # assemble agent_packet + hidden
-python3 reference/build_harbor.py                          # assemble the three Harbor tasks
+python3 reference/build_harbor.py                          # assemble the four Harbor tasks
 ```

@@ -3,8 +3,8 @@
 Scores a submitted `run_qp.py` against held-out ARPES.
 
 ```
-hidden/L{1,2,3}/{K,Mg}/   held-out metals per level: element_config.json, grid.csv,
-                          arpes_reference.csv (scoring target), + level data files
+hidden/L{1,2,3,4}/{K,Mg}/ held-out metals per level: element_config.json, grid.csv,
+                          arpes_reference.csv (scoring target), + level data files (L4: none)
 gold/<El>_gold.csv        gold bands (QP + KS, occupied + first unoccupied) from
                           reference/gold_runner.jl; used for the band-count check
                           and the KS-baseline audit
@@ -18,7 +18,7 @@ validate_submission.py    the scorer
 python validate_submission.py --submission-dir <dir> --level 2 --json result.json
 ```
 
-`--level {1,2,3}` selects `hidden/L<level>`. For each hidden element the validator
+`--level {1,2,3,4}` selects `hidden/L<level>`. Per element the report also states `gold_baseline_rmse_eV` and `beats_gold` (vs the published gold K 0.139 / Mg 0.187), and overall `beats_gold_all` — at L4 that flag is the beyond-leading-order achievement; PASS bars are unchanged. For each hidden element the validator
 copies the inputs to a **sanitized temp dir with no `arpes_reference.csv`**
 (`copy_runner_inputs`), runs `python <dir>/run_qp.py --element-config ... --grid
 ... --out ...` against it, then scores.

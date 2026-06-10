@@ -48,8 +48,9 @@ The levels differ only in **how much the `agent_packet/` withholds**.
 | **L1** | `z_core` closed form **and** precomputed `f_c(K)` tables + `DeltaE_c` | numerical answer (`z_core_gamma`), per-element values | DFTK wiring, correct application, generalization (floor) |
 | **L2** | `z_core` closed form; atomic core radial data `u_c(r)`, `V_{H,c}(r)`, `DeltaE_c`; `J_c` computed from radial data | `f_c(K)` tables, `z_core_gamma` | implementing the form-factor quadrature (Eq. 7), extracting `c_nk(G)` from DFTK, assembling `z_core(n,k)` |
 | **L3** | physical setup only (the two conditions, dual-fermion mechanism narrative, "missing physics is dynamical frozen-core"); atomic core radial data | the entire `z_core` / `F_c` formula | deriving `z_core` from the EFT and implementing it |
+| **L4** | the problem (puzzle + all-electron action + double-counting fact) and the public ARPES; gold's public-element scores stated as the baseline | everything else: formula, structural ansatz, ALL atomic data, prescribed approximations (closure / s-channel are no longer commanded) | open frontier — own atomic solver, every truncation declared+controlled (consistency ledger in method.md), and *beyond-leading-order* physics: `beats_gold` / `beats_gold_all` reported by the evaluator. PASS bars unchanged (= leading-order quality); beating gold on every hidden element is the scientific result |
 
-All three are scored identically on held-out elements; "generalization" is inherent
+All levels are scored identically on held-out elements; "generalization" is inherent
 because the agent writes code against Na/Al only and is graded on concealed metals.
 
 ---
