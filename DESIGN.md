@@ -106,6 +106,13 @@ concealment is the test *set*, not the runtime name:
      This is intrinsic to **L3** (derive a published result); L1/L2 are unaffected
      (the formula is given there, and the hidden answers are per-point band data
      that can't be memorized precisely and aren't known to be the test set).
+4. **Vertex diagonal audit (L3, post-hoc)** — for the submission's derived
+   per-channel coupling potential, `∫ u_c² V_vertex dr` must be ~0 (the dynamical
+   vertex is a zero-mean fluctuation against the core orbital; its mean is already
+   inside `DeltaE_c` and the static PSP). A large nonzero diagonal flags a coupling
+   selected by numerical coincidence on Na/Al rather than derived — the dominant
+   failure mode of the strongest probed agents (see `evaluator/README.md` checklist,
+   `experiments/L3_fable5/REPORT.md`, `maintainer_sources/NOTE-vertex-derivation-Li.md`).
 4. **KS-baseline gate (§4)** — the correction must be *necessary* to pass, so a
    memorized/plumbing-only submission fails.
 

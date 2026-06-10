@@ -17,6 +17,7 @@
       "atomic_core_file": "atomic_core_3s.csv"
     }
   ],
+  "DeltaE_c_note": "DeltaE_c_Ha is the full interacting-core excitation energy E_core(hole in c) - E_core(ground state), a many-electron total-energy difference -- NOT a bare orbital-eigenvalue difference.",
   "atomic_data_columns": {
     "atomic_core_*.csv": [
       "r_bohr",
