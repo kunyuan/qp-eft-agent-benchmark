@@ -38,6 +38,16 @@ from pathlib import Path
 # is correctly failed. The agent is told only a physical target (~0.1 eV vs
 # eDMFT/ARPES), not this grading bar.
 PASS_THRESHOLD_EV = {"K": 0.17, "Mg": 0.21}
+# Gold reference's own hidden-set RMSE (the published leading-order baseline).
+# Reported per element as `gold_baseline_rmse_eV` + `beats_gold`; at L4 ("open
+# frontier") beating it on every hidden element is the beyond-leading-order
+# achievement (`beats_gold_all`). PASS bars above are unchanged at every level.
+GOLD_RMSE_EV = {"K": 0.138984, "Mg": 0.186648}
+# `beats_gold` requires beating the baseline by more than implementation jitter
+# (faithful re-implementations reproduce the gold to ~0.001 eV): a real,
+# physics-level improvement, not numerical noise. The gold itself does NOT beat
+# itself under this margin.
+BEATS_GOLD_MARGIN_EV = 0.005
 DEFAULT_PASS_EV = 0.30      # fallback for an element without a calibrated bar
 PARTIAL_MARGIN_EV = 0.10    # PARTIAL spans [bar, bar + margin)
 # fraction of points allowed to exceed the gold band count before we call it flooding
@@ -174,10 +184,15 @@ def score_element(
     residuals = [min(predictions[pid], key=lambda v: abs(v - reference[pid])) - reference[pid]
                  for pid in scored]
     rmse = _rmse(residuals)
+    gold_extra = {}
+    if element in GOLD_RMSE_EV:
+        gold_extra = {"gold_baseline_rmse_eV": GOLD_RMSE_EV[element],
+                      "beats_gold": bool(rmse < GOLD_RMSE_EV[element] - BEATS_GOLD_MARGIN_EV)}
     return {
         "verdict": verdict(rmse, element),
         "rmse_eV": round(rmse, 6),
         "pass_threshold_eV": pass_threshold(element),
+        **gold_extra,
         "mae_eV": round(sum(abs(x) for x in residuals) / len(residuals), 6),
         "mean_signed_eV": round(sum(residuals) / len(residuals), 6),
         "max_abs_error_eV": round(max(abs(x) for x in residuals), 6),
@@ -238,11 +253,16 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
         overall = "FAIL"
     else:
         overall = "PARTIAL"
+    beats = [r.get("beats_gold") for r in per_element.values()
+             if isinstance(r, dict) and "beats_gold" in r]
     return {
         "per_element": per_element,
         "overall": {
             "mean_rmse_eV": round(mean_rmse, 6) if mean_rmse is not None else None,
             "verdict": overall,
+            # beyond-leading-order flag (the L4 "open frontier" achievement):
+            # every hidden element strictly better than the published gold.
+            "beats_gold_all": bool(beats) and all(beats),
             "per_element_pass_thresholds_eV": {
                 el: r.get("pass_threshold_eV") for el, r in per_element.items()
                 if isinstance(r, dict) and r.get("pass_threshold_eV") is not None
@@ -254,7 +274,7 @@ def run_submission(submission_dir: Path, hidden_dir: Path, gold_dir: Path) -> di
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--submission-dir", required=True, type=Path)
-    p.add_argument("--level", type=int, choices=(1, 2, 3), default=2,
+    p.add_argument("--level", type=int, choices=(1, 2, 3, 4), default=2,
                    help="difficulty level; selects hidden/L<level> (default 2)")
     p.add_argument("--hidden-dir", type=Path, default=None,
                    help="override; defaults to evaluator/hidden/L<level>")

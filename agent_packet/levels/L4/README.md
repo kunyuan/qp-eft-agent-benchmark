@@ -1,18 +1,8 @@
-# Frozen-Core Quasiparticle Band Benchmark — agent packet
+# Level 4 — open frontier
 
-Predict occupied quasiparticle band energies for simple metals. The same
-physics problem is offered at four difficulty levels (pick one); all are
-scored identically against held-out ARPES.
+Nothing is given but the problem: no formula, no structural ansatz, no prescribed approximations, and no atomic data — you compute your own atomic inputs and choose and justify every truncation. Read `SETUP.md`. The published leading-order treatment is the baseline to match or beat; surpassing it on the concealed metals means physics beyond the published treatment. Document everything in `method.md` (consistency ledger required).
 
-- `levels/L1/` — apply the given `z_core` formula + given form factors.
-- `levels/L2/` — formula given; compute the form factor from atomic data.
-- `levels/L3/` — derive the correction from the physical setup.
-- `levels/L4/` — open frontier: no formula, no atomic data; compute your
-  own atomic inputs, declare every approximation, beat the published
-  leading-order baseline if you can.
-
-Develop against the public elements (Na, Al). The evaluator runs your
-`run_qp.py` on concealed held-out metals via the same interface.
+Public development elements: `Na/`, `Al/` (each with `element_config.json`, `grid.csv`, `arpes_reference.csv`, and NO atomic data files — whatever atomic inputs your derivation needs, you compute yourself).
 
 ## Environment & how to compute the Kohn-Sham band
 

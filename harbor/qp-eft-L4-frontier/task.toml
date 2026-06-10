@@ -1,0 +1,21 @@
+version = "1.0"
+
+[metadata]
+author_name = "QP-EFT Benchmark"
+author_email = "noreply@example.com"
+difficulty_explanation = "Open frontier: derive the frozen-core quasiparticle correction from first principles with NO formula, NO structural ansatz, and NO atomic data — compute your own atomic inputs, declare and justify every approximation, and beat bare KS against held-out ARPES on concealed metals. The published leading-order treatment is the baseline to match or beat."
+category = "scientific-computing"
+tags = ["physics", "dft", "dftk", "quasiparticle", "frozen-core", "julia", "level-4"]
+
+# DFTK SCF + bands on the two hidden metals (K, Mg) take a few minutes each.
+[verifier]
+timeout_sec = 2400.0
+
+# Generous: exploration involves repeated DFTK runs (each fresh Julia process
+# pays ~tens of seconds of load/JIT on top of the SCF).
+[agent]
+timeout_sec = 7200.0
+
+# Building the image instantiates + precompiles DFTK and pre-fetches artifacts.
+[environment]
+build_timeout_sec = 3600.0

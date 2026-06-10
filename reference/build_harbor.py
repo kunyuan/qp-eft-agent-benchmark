@@ -5,7 +5,7 @@ verifier) are identical across levels; only instruction.md, task.toml metadata,
 and the packet/hidden data differ.
 
 Usage:
-  python build_harbor.py            # builds L1, L2, L3
+  python build_harbor.py            # builds L1, L2, L3, L4
   python build_harbor.py 2          # just L2
 """
 from __future__ import annotations
@@ -34,6 +34,13 @@ LEVELS = {
                         "the provided atomic core data, then beat bare KS against held-out "
                         "ARPES on concealed metals. Frontier rung: amounts to "
                         "reconstructing the paper's derivation.")),
+    4: dict(slug="L4-frontier", doc="SETUP.md", tag="level-4",
+            difficulty=("Open frontier: derive the frozen-core quasiparticle correction "
+                        "from first principles with NO formula, NO structural ansatz, and "
+                        "NO atomic data — compute your own atomic inputs, declare and "
+                        "justify every approximation, and beat bare KS against held-out "
+                        "ARPES on concealed metals. The published leading-order treatment "
+                        "is the baseline to match or beat.")),
 }
 
 PREAMBLE = """\
@@ -50,7 +57,7 @@ python run_qp.py --element-config <config.json> --grid <grid.csv> --out <out.csv
 ```
 
 on concealed held-out metals (not Na/Al). Each hidden element's data files
-(`element_config.json`, `grid.csv`, `core_model.json`, and this level's data)
+({HIDDEN_FILES})
 are placed in one directory; your code is given the config and grid paths and
 should read the rest relative to the config.
 
@@ -231,7 +238,11 @@ def build_level(level: int):
     lvl = ROOT / "agent_packet" / "levels" / f"L{level}"
 
     # instruction.md = preamble + level README + theory/setup
-    instruction = (PREAMBLE + (lvl / "README.md").read_text()
+    hidden_files = ("`element_config.json` and `grid.csv` only -- no atomic data"
+                    if level == 4 else
+                    "`element_config.json`, `grid.csv`, `core_model.json`, and this level's data")
+    instruction = (PREAMBLE.replace("{HIDDEN_FILES}", hidden_files)
+                   + (lvl / "README.md").read_text()
                    + "\n\n---\n\n" + (lvl / meta["doc"]).read_text())
     (dst / "instruction.md").write_text(instruction)
     (dst / "task.toml").write_text(task_toml(meta))
@@ -267,6 +278,6 @@ def build_level(level: int):
 
 
 if __name__ == "__main__":
-    levels = [int(sys.argv[1])] if len(sys.argv) > 1 else [1, 2, 3]
+    levels = [int(sys.argv[1])] if len(sys.argv) > 1 else [1, 2, 3, 4]
     for lv in levels:
         build_level(lv)
