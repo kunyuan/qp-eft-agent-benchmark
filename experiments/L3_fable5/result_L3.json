@@ -1,0 +1,36 @@
+{
+  "overall": {
+    "mean_rmse_eV": 0.331332,
+    "per_element_pass_thresholds_eV": {
+      "K": 0.17,
+      "Mg": 0.21
+    },
+    "verdict": "FAIL"
+  },
+  "per_element": {
+    "K": {
+      "ks_baseline_rmse_eV": 0.613881,
+      "mae_eV": 0.425883,
+      "max_abs_error_eV": 0.668422,
+      "mean_signed_eV": 0.415131,
+      "n_missing": 0,
+      "n_points_over_band_cap": 0,
+      "n_scored": 10,
+      "pass_threshold_eV": 0.17,
+      "rmse_eV": 0.463788,
+      "verdict": "FAIL"
+    },
+    "Mg": {
+      "ks_baseline_rmse_eV": 0.434304,
+      "mae_eV": 0.159424,
+      "max_abs_error_eV": 0.477861,
+      "mean_signed_eV": 0.082683,
+      "n_missing": 0,
+      "n_points_over_band_cap": 0,
+      "n_scored": 88,
+      "pass_threshold_eV": 0.21,
+      "rmse_eV": 0.198875,
+      "verdict": "PASS"
+    }
+  }
+}
