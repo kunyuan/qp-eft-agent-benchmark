@@ -41,6 +41,16 @@ META = {
 }
 
 
+# L4-only third development element: closed-form hydrogenic core, no ARPES;
+# self-check anchor is theoretical (LDA 3.48 / eDMFT 2.60 eV Gamma depth).
+# Config smoke-tested: pinned DFTK setup gives Li Gamma depth 3.50 eV.
+META_L4_DEV = {
+    "Li": dict(role="dev_l4", Z=3, bravais="bcc", a=6.600, ca=None, zval=1,
+               ecut=20.0, kgrid=[8, 8, 8], path=("Gamma", "N", [0, 0, 0.5]),
+               core_s=["1s"], valence="2s1", src_grid=None),
+}
+
+
 def lattice_and_positions(m: dict):
     """Explicit primitive cell (matches the gold's construction exactly).
     Returns (lattice_vectors_bohr, atom_positions_frac):
@@ -462,10 +472,36 @@ respect: the pinned KS step already contains a static frozen-core pseudopotentia
 counted — your correction must consist only of what static pseudopotentials omit,
 and re-adding any static piece double-counts the core.
 
+## Stage 1 (mandatory): close the theory on Li before any heavy element
+
+Lithium is provided as a third development element (`Li/`: config + grid; no
+ARPES exists for Li). Its core is a single hydrogenic 1s² shell, so EVERY
+quantity in your derivation has a closed form. Before generalizing to Na/Al:
+
+1. Derive the full correction on Li ANALYTICALLY: explicit expressions for the
+   core orbital, its orbital energy, every Coulomb integral, every core
+   excitation energy, the coupling vertex, and z_core at the band bottom. The
+   two-electron core makes the enumeration of ALL second-order contractions of
+   the core-valence interaction finite — enumerate them COMPLETELY, state what
+   each contributes, and carry the complete set forward.
+2. Validate against the theoretical anchor: for Li the literature gives a
+   Γ-point occupied depth of LDA 3.48 eV vs eDMFT 2.60 eV (no ARPES exists) —
+   the many-body narrowing implies z_Γ ≈ 0.75, the LARGEST of the simple
+   metals. Your pinned KS setup reproduces the LDA depth to ~0.1 eV; your
+   derived correction must reproduce the ~25% narrowing scale from first
+   principles. If your derived channels give far less on Li, a contraction is
+   missing from your enumeration — return to step 1; do not proceed to heavier
+   elements on the strength of Na/Al agreement alone (Li is deliberately the
+   element where incomplete channel sets fail loudest).
+3. Only then generalize: every step that is closed-form on Li but approximate
+   for multi-shell cores (orbital choice, excitation energies, screening) is
+   an entry in the approximation ledger with an error estimate.
+
 ## What you have — and what you must build yourself
 
 `element_config.json` (lattice, atom positions, `Z_nuclear`, `dft.z_valence`, the
-pinned DFT settings), `grid.csv`, and the public ARPES for Na and Al. There is NO
+pinned DFT settings), `grid.csv`, and the public ARPES for Na and Al; for Li,
+config + grid and the theoretical anchor above (no ARPES). There is NO
 atomic core data in this packet: whatever atomic inputs your derivation needs —
 core orbitals, core potentials, excitation energies — you compute yourself (e.g.
 with your own radial atomic solver; the core occupation follows from `Z_nuclear`
@@ -484,6 +520,9 @@ reference — state it, do not treat it as a black box.
    energy bookkeeping.
 4. If you claim accuracy beyond the published leading order, attribute the gain
    to the specific physical term that produced it.
+5. The Li closed-form list: analytic expressions for the Li core orbital
+   energy, self-Coulomb integral, excitation energy, coupling vertex, and
+   z_Γ — with the numerical comparison against the LDA/eDMFT anchor.
 
 ## Rules
 
@@ -525,7 +564,10 @@ LEVEL_DOCS = {
     4: ("Level 4 — open frontier",
         "Nothing is given but the problem: no formula, no structural ansatz, no "
         "prescribed approximations, and no atomic data — you compute your own "
-        "atomic inputs and choose and justify every truncation. Read `SETUP.md`. "
+        "atomic inputs and choose and justify every truncation. Read `SETUP.md`; "
+        "its Stage 1 (close the theory on Li in closed form against a theoretical "
+        "anchor, with a complete contraction enumeration) is mandatory and comes "
+        "first. "
         "The published leading-order treatment is the baseline to match or beat; "
         "surpassing it on the concealed metals means physics beyond the published "
         "treatment. Document everything in `method.md` (consistency ledger "
@@ -538,13 +580,21 @@ def write_docs():
     for level, (title, blurb, docname, doctext) in LEVEL_DOCS.items():
         d = base / f"L{level}"
         (d / docname).write_text(doctext)
-        data_phrase = ("and NO atomic data files — whatever atomic inputs your "
-                       "derivation needs, you compute yourself" if level == 4
-                       else "and the level's data files")
+        if level == 4:
+            elements_line = (
+                "Public development elements: `Li/`, `Na/`, `Al/` — Na and Al with "
+                "`element_config.json`, `grid.csv`, `arpes_reference.csv`; Li with "
+                "config + grid only (its self-check anchor is theoretical — see "
+                "SETUP.md Stage 1, which is mandatory and comes FIRST). NO atomic "
+                "data files anywhere: whatever atomic inputs your derivation needs, "
+                "you compute yourself.")
+        else:
+            elements_line = (
+                f"Public development elements: `Na/`, `Al/` (each with "
+                f"`element_config.json`, `grid.csv`, `arpes_reference.csv`, "
+                f"and the level's data files).")
         (d / "README.md").write_text(
-            f"# {title}\n\n{blurb}\n\nPublic development elements: `Na/`, `Al/` "
-            f"(each with `element_config.json`, `grid.csv`, `arpes_reference.csv`, "
-            f"{data_phrase}).\n\n{SUBMISSION}")
+            f"# {title}\n\n{blurb}\n\n{elements_line}\n\n{SUBMISSION}")
     (ROOT / "agent_packet" / "README.md").write_text(
         "# Frozen-Core Quasiparticle Band Benchmark — agent packet\n\n"
         "Predict occupied quasiparticle band energies for simple metals. The same\n"
@@ -584,6 +634,15 @@ def build():
             shutil.copy(m["src_grid"]/"grid.csv", dst/"grid.csv")
             shutil.copy(m["src_grid"]/"arpes_reference.csv", dst/"arpes_reference.csv")
             copy_level_data(el, level, dst)
+    # L4-only dev element(s): config + generated grid, no ARPES, no core data
+    for el, m in META_L4_DEV.items():
+        cfg = config_for(el, m)
+        cfg.pop("frozen_core", None)
+        dst = ROOT/"agent_packet/levels/L4"/el
+        dst.mkdir(parents=True, exist_ok=True)
+        (dst/"element_config.json").write_text(json.dumps(cfg, indent=2) + "\n")
+        grid = "point_id,t\n" + "".join(f"{i},{i/31:.6f}\n" for i in range(1, 32))
+        (dst/"grid.csv").write_text(grid)
     write_docs()
     print("packet assembled")
 

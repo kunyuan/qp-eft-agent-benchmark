@@ -36,10 +36,36 @@ respect: the pinned KS step already contains a static frozen-core pseudopotentia
 counted — your correction must consist only of what static pseudopotentials omit,
 and re-adding any static piece double-counts the core.
 
+## Stage 1 (mandatory): close the theory on Li before any heavy element
+
+Lithium is provided as a third development element (`Li/`: config + grid; no
+ARPES exists for Li). Its core is a single hydrogenic 1s² shell, so EVERY
+quantity in your derivation has a closed form. Before generalizing to Na/Al:
+
+1. Derive the full correction on Li ANALYTICALLY: explicit expressions for the
+   core orbital, its orbital energy, every Coulomb integral, every core
+   excitation energy, the coupling vertex, and z_core at the band bottom. The
+   two-electron core makes the enumeration of ALL second-order contractions of
+   the core-valence interaction finite — enumerate them COMPLETELY, state what
+   each contributes, and carry the complete set forward.
+2. Validate against the theoretical anchor: for Li the literature gives a
+   Γ-point occupied depth of LDA 3.48 eV vs eDMFT 2.60 eV (no ARPES exists) —
+   the many-body narrowing implies z_Γ ≈ 0.75, the LARGEST of the simple
+   metals. Your pinned KS setup reproduces the LDA depth to ~0.1 eV; your
+   derived correction must reproduce the ~25% narrowing scale from first
+   principles. If your derived channels give far less on Li, a contraction is
+   missing from your enumeration — return to step 1; do not proceed to heavier
+   elements on the strength of Na/Al agreement alone (Li is deliberately the
+   element where incomplete channel sets fail loudest).
+3. Only then generalize: every step that is closed-form on Li but approximate
+   for multi-shell cores (orbital choice, excitation energies, screening) is
+   an entry in the approximation ledger with an error estimate.
+
 ## What you have — and what you must build yourself
 
 `element_config.json` (lattice, atom positions, `Z_nuclear`, `dft.z_valence`, the
-pinned DFT settings), `grid.csv`, and the public ARPES for Na and Al. There is NO
+pinned DFT settings), `grid.csv`, and the public ARPES for Na and Al; for Li,
+config + grid and the theoretical anchor above (no ARPES). There is NO
 atomic core data in this packet: whatever atomic inputs your derivation needs —
 core orbitals, core potentials, excitation energies — you compute yourself (e.g.
 with your own radial atomic solver; the core occupation follows from `Z_nuclear`
@@ -58,6 +84,9 @@ reference — state it, do not treat it as a black box.
    energy bookkeeping.
 4. If you claim accuracy beyond the published leading order, attribute the gain
    to the specific physical term that produced it.
+5. The Li closed-form list: analytic expressions for the Li core orbital
+   energy, self-Coulomb integral, excitation energy, coupling vertex, and
+   z_Γ — with the numerical comparison against the LDA/eDMFT anchor.
 
 ## Rules
 
