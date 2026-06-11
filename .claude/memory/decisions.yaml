@@ -1,0 +1,11 @@
+- id: decision-001
+  date: 2026-06-11
+  expires: 2026-12-11
+  title: "L4 multi-session relay counts as ONE attempt, with disclosed resume wording"
+  choice: "Infra-killed sessions resumed from the agent's own artifacts/NOTES.md constitute a single L4 attempt; every resume prompt is archived verbatim and steering content is disclosed in the run report."
+  alternatives_considered:
+    - "Each session = separate attempt — rejected: punishes platform failures, not agent capability."
+    - "Discard killed runs entirely — rejected: wastes valid partial science and hides the infra problem."
+  trade_off: "Resume notes can never be fully steering-free; purity is graded, not binary."
+  files: [experiments/, DESIGN.md]
+  tags: [benchmark-design, protocol]

@@ -21,7 +21,7 @@ formula (at the harder levels) and grade the predictions.
 | **L1** | full `z_core` formula + precomputed `f_c(K)` tables | — | DFTK wiring, applying the correction, generalization |
 | **L2** | the formula; atomic core data (`u_c`, `V_H_c`) | the form factors | implementing the form-factor quadrature |
 | **L3** | only the physical setup + atomic core data | the formula | deriving `z_core` from the EFT |
-| **L4** | only the problem + public ARPES | the formula AND all atomic data; no prescribed approximations | open frontier: own atomic solver, declared/controlled approximations, match or **beat** the published leading order |
+| **L4** | only the problem + public ARPES + Li as a closed-form anchor element (mandatory Li-first analytic stage) | the formula AND all atomic data; no prescribed approximations | open frontier: own atomic solver, complete contraction enumeration on Li, declared/controlled approximations, match or **beat** the published leading order |
 
 All levels are scored identically against held-out ARPES.
 

@@ -251,7 +251,8 @@ def build_level(level: int):
     (dst / "environment" / "Dockerfile").write_text(DOCKERFILE)
     for f in ("Project.toml", "Manifest.toml"):
         shutil.copy(ROOT / "environment" / f, dst / "environment" / f)
-    for el in ("Na", "Al"):
+    packet_els = ("Li", "Na", "Al") if level == 4 else ("Na", "Al")
+    for el in packet_els:
         shutil.copytree(lvl / el, dst / "environment" / "packet" / el)
 
     # solution (oracle)

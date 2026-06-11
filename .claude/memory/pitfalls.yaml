@@ -1,0 +1,29 @@
+- id: pitfall-001
+  date: 2026-06-11
+  expires: 2026-09-11
+  title: "Agent-tool 600s stream watchdog kills long-thinking solver sessions"
+  wrong: "Launching multi-hour L3/L4 solver agents via the Agent tool and letting them hold long derivations in-context: any single reasoning stretch >~600s of stream silence gets killed (6 kills in the L4 fable5 campaign, 2026-06-10/11; worst kills landed exactly at the deepest derivation moments)."
+  right: "Instruct solver agents explicitly: think in SHORT bursts; externalize every intermediate derivation step to scratch/derivation_notes.md as you go; append every established result to scratch/NOTES.md immediately; frequent small tool calls keep the stream alive. Run 7 ran ~4h productively under this style after runs 5/6 died with zero progress."
+  impact: "Lost in-context derivation reasoning (method.md not yet written), forced resume-note contamination, ~6h wall-clock lost across kills"
+  files: [experiments/]
+  tags: [harness, long-horizon, protocol]
+
+- id: pitfall-002
+  date: 2026-06-11
+  expires: 2026-09-11
+  title: "Resume notes after kills contaminate probe purity"
+  wrong: "Writing physics summaries into relaunch prompts after infra kills: run-3+ notes included 'what other second-order contraction exists' and 'identical fermions / antisymmetry' phrasing — steering the solver toward the exchange channel beyond what L4's de-scaffolded SETUP provides."
+  right: "Pre-commit a fixed resume template that ONLY points the agent at its own scratch/NOTES.md + derivation_notes.md and never paraphrases the physics; make NOTES.md maintenance part of the task spec from minute one (not added at run 4 as we did). Document every resume-note's wording in the run archive so result interpretation can discount it."
+  impact: "L4 fable5 result must be interpreted with steering caveats from run 3 onward"
+  files: [experiments/, DESIGN.md]
+  tags: [benchmark-design, contamination, protocol]
+
+- id: pitfall-003
+  date: 2026-06-11
+  expires: 2026-09-11
+  title: "Vertex-diagonal ledger check cannot detect a MISSING channel"
+  wrong: "Treating the L4 consistency ledger's per-channel vertex-diagonal requirement as sufficient: the fable5 L4 solver's direct-channel couplings (transition-density potentials, x != c) pass the zero-diagonal check trivially by parity/orthogonality, while the dominant hole/exchange channel is simply absent from its enumeration — the ledger never fires."
+  right: "The diagonal check audits a WRONG vertex within a kept channel; channel COMPLETENESS needs its own ledger item — e.g. require enumeration of intermediate-state sectors (core-excitation vs core-hole) and a closure argument that the channel set is complete under antisymmetrization of the core-valence field split."
+  impact: "L4 fable5: honest, fully-audited direct channel delivering ~0.28 of the needed ~0.65 eV narrowing, with the gap invisible to every ledger item we required"
+  files: [reference/build_packet.py, evaluator/README.md, DESIGN.md]
+  tags: [benchmark-design, physics, audit]

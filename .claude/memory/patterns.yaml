@@ -1,0 +1,10 @@
+- id: pattern-001
+  date: 2026-06-11
+  expires: 2026-12-11
+  title: "NOTES.md relay protocol for long-horizon solver runs"
+  steps:
+    - "Task spec requires from minute one: append one factual line to scratch/NOTES.md after every substantive step (result, decision, bug)."
+    - "Derivations are externalized to scratch/derivation_notes.md AS THEY HAPPEN, never held in-context."
+    - "On kill: relaunch with a fixed template prompt pointing at NOTES.md (no physics paraphrase); agent's first action is reading its own log."
+    - "Maintainer keeps a stall monitor (transcript mtime) and archives every resume prompt verbatim for contamination accounting."
+  tags: [protocol, long-horizon]
