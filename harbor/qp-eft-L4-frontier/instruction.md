@@ -184,6 +184,12 @@ quantity in your derivation has a closed form. Before generalizing to Na/Al:
    two-electron core makes the enumeration of ALL second-order contractions of
    the core-valence interaction finite — enumerate them COMPLETELY, state what
    each contributes, and carry the complete set forward.
+   The enumeration must be carried out in the second-quantized algebra of the
+   SINGLE antisymmetrized electron field: Wick-contract the one electron field
+   first, then classify channels. After any split of the field into core and
+   valence components, ALL leg assignments of the quartic Coulomb term must be
+   retained — an enumeration that keeps only the assignments conserving each
+   component's particle number separately is incomplete.
 2. Validate against the theoretical anchor: for Li the literature gives a
    Γ-point occupied depth of LDA 3.48 eV vs eDMFT 2.60 eV (no ARPES exists) —
    the many-body narrowing implies z_Γ ≈ 0.75, the LARGEST of the simple
@@ -217,7 +223,11 @@ reference — state it, do not treat it as a black box.
 2. The explicit expression for every core excitation energy you use.
 3. For each core channel: the diagonal matrix element of your derived coupling
    against that channel's orbital, and why its value is consistent with your
-   energy bookkeeping.
+   energy bookkeeping. A nonzero diagonal means your coupling contains a static
+   component: point to the precise reference object (a pseudopotential term, an
+   excitation-energy definition) in which that static component is already
+   counted once and subtracted — if you cannot point to it, the coupling
+   double-counts.
 4. If you claim accuracy beyond the published leading order, attribute the gain
    to the specific physical term that produced it.
 5. The Li closed-form list: analytic expressions for the Li core orbital
@@ -227,7 +237,10 @@ reference — state it, do not treat it as a black box.
 ## Rules
 
 Parameter-free: no fitted constant. If you need to tune a constant to match the
-public elements, your derivation is incomplete — re-derive, do not fit. The same
+public elements, your derivation is incomplete — re-derive, do not fit. The
+anchors (the Li depth, the literature table) are for VALIDATION only: a constant
+calibrated on an anchor is a fitted constant, even if the anchor is theoretical
+rather than experimental — re-derive, do not calibrate. The same
 code path runs on every element; it is graded on held-out metals whose core
 structure differs from the public Na/Al, so matching Na/Al is necessary but not
 sufficient.
@@ -244,3 +257,14 @@ derivation. Conversely, a correctly derived coupling can appear wrong by a large
 factor if your Bloch-state contraction conventions are inconsistent — if the
 magnitude looks off, audit the conventions end-to-end against the public ARPES
 before abandoning the derivation.
+
+## Working protocol (long-horizon discipline)
+
+Maintain `scratch/NOTES.md` from your first step: append one factual line after
+every substantive step (a derivation conclusion, a numerical result, a
+decision) stating what you established and what comes next. Externalize
+derivations AS YOU GO into `scratch/derivation_notes.md` — write each step down
+before deriving the next; never hold a long derivation in your head. These
+files are part of the audit trail (`method.md` draws on them) and make
+interrupted sessions resumable without loss. If you are resumed after an
+interruption, read `NOTES.md` first and continue from its last entry.
