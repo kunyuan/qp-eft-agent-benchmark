@@ -1,0 +1,41 @@
+{
+  "overall": {
+    "beats_gold_all": false,
+    "mean_rmse_eV": 0.326141,
+    "per_element_pass_thresholds_eV": {
+      "K": 0.17,
+      "Mg": 0.21
+    },
+    "verdict": "FAIL"
+  },
+  "per_element": {
+    "K": {
+      "beats_gold": false,
+      "gold_baseline_rmse_eV": 0.138984,
+      "ks_baseline_rmse_eV": 0.613881,
+      "mae_eV": 0.367366,
+      "max_abs_error_eV": 0.526649,
+      "mean_signed_eV": 0.367366,
+      "n_missing": 0,
+      "n_points_over_band_cap": 0,
+      "n_scored": 10,
+      "pass_threshold_eV": 0.17,
+      "rmse_eV": 0.394759,
+      "verdict": "FAIL"
+    },
+    "Mg": {
+      "beats_gold": false,
+      "gold_baseline_rmse_eV": 0.186648,
+      "ks_baseline_rmse_eV": 0.434304,
+      "mae_eV": 0.217734,
+      "max_abs_error_eV": 0.60879,
+      "mean_signed_eV": 0.147941,
+      "n_missing": 0,
+      "n_points_over_band_cap": 0,
+      "n_scored": 88,
+      "pass_threshold_eV": 0.21,
+      "rmse_eV": 0.257524,
+      "verdict": "PARTIAL"
+    }
+  }
+}
