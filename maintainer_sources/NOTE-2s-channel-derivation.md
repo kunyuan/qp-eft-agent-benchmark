@@ -186,3 +186,50 @@ model; omitted inter-site dynamic class (a candidate home for the remaining
    static projection is qualitatively wrong at half filling); **residual gas
    → KS**. For heavier alkalis the 2s-channel truncation must be pushed
    beyond second order (λ_K > 1) — a computation, not a new framework.
+
+---
+
+## Addendum (same day) — unbiased evaluation at second order
+
+Biased partial resummations (self-consistent 2nd order / QP self-consistency)
+are demoted to diagnostics. The unbiased program at O(U²): evaluate the
+second-order self-energy **with full momentum conservation** at k = k_F (the
+local/DOS-convolution form used above is an approximation, not part of the
+theory). Half filling fixes the geometry universally: the Fermi sphere is half
+the BZ sphere, k_F/k_BZ = 2^{−1/3}, so λ = (U/E_F)²·J with a single
+dimensionless J per model.
+
+MC evaluation (median-of-means; validation: the same code in independent-
+momentum mode reproduces the DOS-convolution value 0.474 for Li):
+
+    J_local      = 0.462   (the DOS-convolution / locality approximation)
+    J_one-band   = 0.139   (exact momentum conservation, one-band model)
+    J_extended   = 0.39    (conservation, free-electron intermediate states
+                            to all heights with FULL U vertex — a loose upper
+                            bracket: high-band couplings actually carry
+                            orbital form factors and partly belong to the
+                            V_inter class)
+
+**Finding: the locality approximation overestimates λ by 3.3×** — momentum
+conservation strongly restricts the 2p1h phase space near the FS in 3D, which
+DOS convolutions ignore. Directly relevant to interpreting local-method
+(eDMFT-style) anchors for wide-band metals.
+
+| element | z local (biased) | **z one-band (unbiased)** | z ext.-bracket | published |
+|---|---|---|---|---|
+| Li | 0.68 | **0.87** | 0.72 | 0.75 |
+| Na | 0.52 | **0.78** | 0.57 | — |
+| K  | 0.39 | **0.69** | 0.45 | 0.66 |
+
+Reading: (i) our *local-biased* numbers track the published/eDMFT values —
+consistent with those anchors carrying the same locality bias; (ii) the
+unbiased one-band theory gives distinctly less narrowing (z_Li = 0.87), with
+the truncation now healthy everywhere (λ_K = 0.46 ≪ 1.5 of the local form);
+(iii) the gap to experiment-scale narrowing must then be carried by the
+declared omitted class (inter-band / V_inter dynamics) and/or by the locality
+bias of the anchors themselves — a sharp, falsifiable fork.
+
+Remaining-bias ledger after this addendum: 3rd-order truncation (~λ² ≈ 0.02
+on z for Li); higher-band vertices (computable form factors from the atomic
+reference; bracketed above); parabolic vs real KS bands; static-U limit of
+γ⁽⁴⁾. Each is a computation, none is a framework change.
