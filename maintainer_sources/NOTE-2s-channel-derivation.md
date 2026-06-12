@@ -233,3 +233,43 @@ Remaining-bias ledger after this addendum: 3rd-order truncation (~λ² ≈ 0.02
 on z for Li); higher-band vertices (computable form factors from the atomic
 reference; bracketed above); parabolic vs real KS bands; static-U limit of
 γ⁽⁴⁾. Each is a computation, none is a framework change.
+
+---
+
+## Addendum 2 — Choice 3: impurity reference (atom + self-consistent bath) + dual correction
+
+Reference upgraded to the quantum impurity model: 2s orbital (bare atomic
+U = I−A) hybridized with a self-consistently determined bath representing the
+KS band — the zeroth order of this organization is DMFT, i.e. the rung where
+eDMFT-style anchors live. Solver: T = 0 exact diagonalization (full Lehmann),
+the only bias being bath discretization. Validations: U = 0 gives Σ = 0 to
+machine precision (1e-14); bath-size convergence Nb = 4/5/6 → λ_imp(Li) =
+0.612/0.594/0.596 (converged).
+
+Leading dual (nonlocal) correction with the static-U vertex and bare lines is
+the nonlocal part of the second-order diagram, λ_dual = (U/E_F)²(J_cons −
+J_local) = (U/E_F)²·(−0.323).
+
+| element | z_DMFT (0th, bare U) | λ_dual | z choice-3 | z choice-2 | published |
+|---|---|---|---|---|---|
+| Li | 0.63 | −0.327 | **0.79** | 0.87 | 0.75 |
+| Na | 0.40 | −0.647 | (0.53) | 0.78 | — |
+| K  | 0.22 | −1.058 | (0.29) | 0.69 | 0.66 |
+
+Reading:
+1. **Li (controlled everywhere):** two independent organizations now bracket
+   the answer — choice-3 (all local orders exact via ED + leading nonlocal)
+   gives 0.79; choice-2 (unbiased momentum-conserving second order) gives
+   0.87. The spread is the identified not-yet-computed remainder (nonlocal
+   companions of the local 3rd+ orders; dressed lines / full γ⁽⁴⁾ frequency
+   structure in the dual diagram). **z_Li = 0.79–0.87.**
+2. The k-dependent correction is large and *negative for the narrowing* in
+   both organizations: the impurity/locality rung (0.63–0.70) systematically
+   overestimates the mass enhancement of a wide-band metal. This is now
+   established at zeroth+first dual order, not just at bare second order.
+3. **Na/K honesty:** with the bare atomic U the impurity is strongly
+   correlated (λ_imp = 1.5/3.5) and the additive dual assembly is outside its
+   validity (parenthesized). The controlled statement for Na/K remains the
+   choice-2 one (z ≈ 0.78/0.69). Within eDMFT practice this is precisely
+   where dynamic screening of U matters; in our paradigm the analogous terms
+   are the mixed U×V_inter diagrams — the identified next computation.
